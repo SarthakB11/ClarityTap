@@ -94,20 +94,41 @@ document.addEventListener('DOMContentLoaded', () => {
   // Reminders
   const reminderInput = document.getElementById('reminder-input');
   const reminderTime = document.getElementById('reminder-time');
+  const recurrenceUnit = document.getElementById('recurrence-unit');
   const setReminderButton = document.getElementById('set-reminder');
   const reminderList = document.getElementById('reminder-list');
 
   setReminderButton.addEventListener('click', () => {
     const reminderText = reminderInput.value;
     const reminderTimestamp = new Date(reminderTime.value).getTime();
+    const recurrence = recurrenceUnit.value;
+
     if (reminderText && reminderTimestamp > Date.now()) {
-      chrome.alarms.create(reminderText, { when: reminderTimestamp });
+      let periodInMinutes;
+      if (recurrence === 'daily') {
+        periodInMinutes = 24 * 60;
+      } else if (recurrence === 'weekly') {
+        periodInMinutes = 7 * 24 * 60;
+      } else if (recurrence === 'monthly') {
+        periodInMinutes = 30 * 24 * 60; // Approximate
+      }
+
+      chrome.alarms.create(reminderText, { 
+        when: reminderTimestamp,
+        periodInMinutes: periodInMinutes
+      });
+
       chrome.storage.sync.get({reminders: []}, (data) => {
         const reminders = data.reminders;
-        reminders.push({text: reminderText, time: reminderTimestamp});
+        reminders.push({
+          text: reminderText, 
+          time: reminderTimestamp,
+          recurrence: recurrence
+        });
         chrome.storage.sync.set({reminders: reminders}, () => {
           reminderInput.value = '';
           reminderTime.value = '';
+          recurrenceUnit.value = 'none';
           renderReminders();
         });
       });
@@ -119,7 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
       reminderList.innerHTML = '';
       data.reminders.forEach((reminder, index) => {
         const reminderElement = document.createElement('li');
-        reminderElement.textContent = `${reminder.text} - ${new Date(reminder.time).toLocaleString()}`;
+        let recurrenceText = '';
+        if (reminder.recurrence && reminder.recurrence !== 'none') {
+          recurrenceText = `(Repeats ${reminder.recurrence})`;
+        }
+        reminderElement.textContent = `${reminder.text} - ${new Date(reminder.time).toLocaleString()} ${recurrenceText}`;
         
         const deleteButton = document.createElement('button');
         deleteButton.textContent = 'X';
