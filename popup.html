@@ -25,6 +25,12 @@
     <div id="reminders" class="tab-content">
       <input type="text" id="reminder-input" placeholder="Reminder title...">
       <input type="datetime-local" id="reminder-time">
+      <select id="recurrence-unit">
+        <option value="none">Does not repeat</option>
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+      </select>
       <button id="set-reminder">Set Reminder</button>
       <ul id="reminder-list"></ul>
     </div>
