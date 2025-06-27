@@ -6,7 +6,7 @@
   "permissions": ["storage", "alarms", "notifications", "offscreen"],
   "action": {
     "default_popup": "popup.html"
-  },,
+  },
   "background": {
     "service_worker": "background.js"
   }
