@@ -22,3 +22,42 @@ async function createOffscreen() {
     justification: 'To play alarm sounds for reminders',
   });
 }
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === 'start-focus-mode') {
+    const duration = request.duration;
+    const endTime = Date.now() + duration * 60 * 1000;
+    chrome.storage.local.set({ focusModeUntil: endTime });
+    updateBlockingRules();
+  }
+});
+
+async function updateBlockingRules() {
+  const { blockedWebsites, focusModeUntil } = await new Promise(resolve => 
+    chrome.storage.sync.get(['blockedWebsites', 'focusModeUntil'], resolve)
+  );
+
+  const rules = [];
+  if (focusModeUntil && focusModeUntil > Date.now() && blockedWebsites && blockedWebsites.length > 0) {
+    rules.push({
+      id: 1,
+      priority: 1,
+      action: { type: 'block' },
+      condition: {
+        urlFilter: `*://${blockedWebsites.join('|')}/*`,
+        resourceTypes: ['main_frame']
+      }
+    });
+  }
+
+  chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [1],
+    addRules: rules
+  });
+}
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (changes.blockedWebsites || changes.focusModeUntil) {
+    updateBlockingRules();
+  }
+});

@@ -11,6 +11,7 @@
       <button class="tab-button active" data-tab="notes">Notes</button>
       <button class="tab-button" data-tab="tasks">Tasks</button>
       <button class="tab-button" data-tab="reminders">Reminders</button>
+      <button class="tab-button" data-tab="focus-mode">Focus Mode</button>
     </div>
     <div id="notes" class="tab-content active">
       <textarea id="note-input" placeholder="Write a note..."></textarea>
@@ -33,6 +34,16 @@
       </select>
       <button id="set-reminder">Set Reminder</button>
       <ul id="reminder-list"></ul>
+    </div>
+    <div id="focus-mode" class="tab-content">
+      <h3>Block Websites</h3>
+      <input type="text" id="website-input" placeholder="Enter a website to block...">
+      <button id="add-website">Add Website</button>
+      <ul id="website-list"></ul>
+      <h3>Focus Session</h3>
+      <input type="number" id="focus-duration" placeholder="Enter duration in minutes...">
+      <button id="start-focus">Start Focus</button>
+      <div id="focus-timer"></div>
     </div>
   </div>
   <script src="popup.js"></script>

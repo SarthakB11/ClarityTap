@@ -164,4 +164,74 @@ document.addEventListener('DOMContentLoaded', () => {
   renderNotes();
   renderTasks();
   renderReminders();
+
+  // Focus Mode
+  const websiteInput = document.getElementById('website-input');
+  const addWebsiteButton = document.getElementById('add-website');
+  const websiteList = document.getElementById('website-list');
+  const focusDurationInput = document.getElementById('focus-duration');
+  const startFocusButton = document.getElementById('start-focus');
+  const focusTimerDisplay = document.getElementById('focus-timer');
+
+  addWebsiteButton.addEventListener('click', () => {
+    const website = websiteInput.value;
+    if (website) {
+      chrome.storage.sync.get({blockedWebsites: []}, (data) => {
+        const blockedWebsites = data.blockedWebsites;
+        blockedWebsites.push(website);
+        chrome.storage.sync.set({blockedWebsites: blockedWebsites}, () => {
+          websiteInput.value = '';
+          renderBlockedWebsites();
+        });
+      });
+    }
+  });
+
+  function renderBlockedWebsites() {
+    chrome.storage.sync.get({blockedWebsites: []}, (data) => {
+      websiteList.innerHTML = '';
+      data.blockedWebsites.forEach((website, index) => {
+        const websiteElement = document.createElement('li');
+        websiteElement.textContent = website;
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'X';
+        deleteButton.classList.add('delete-button');
+        deleteButton.addEventListener('click', () => {
+          data.blockedWebsites.splice(index, 1);
+          chrome.storage.sync.set({blockedWebsites: data.blockedWebsites}, renderBlockedWebsites);
+        });
+
+        websiteElement.appendChild(deleteButton);
+        websiteList.appendChild(websiteElement);
+      });
+    });
+  }
+
+  startFocusButton.addEventListener('click', () => {
+    const duration = parseInt(focusDurationInput.value, 10);
+    if (duration > 0) {
+      chrome.runtime.sendMessage({
+        type: 'start-focus-mode',
+        duration: duration
+      });
+    }
+  });
+
+  function updateFocusTimer() {
+    chrome.storage.local.get(['focusModeUntil'], (data) => {
+      if (data.focusModeUntil && data.focusModeUntil > Date.now()) {
+        const remainingTime = Math.round((data.focusModeUntil - Date.now()) / 1000);
+        const minutes = Math.floor(remainingTime / 60);
+        const seconds = remainingTime % 60;
+        focusTimerDisplay.textContent = `Focus mode active: ${minutes}m ${seconds}s remaining`;
+      } else {
+        focusTimerDisplay.textContent = '';
+      }
+    });
+  }
+
+  renderBlockedWebsites();
+  updateFocusTimer();
+  setInterval(updateFocusTimer, 1000);
 });

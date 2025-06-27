@@ -3,7 +3,7 @@
   "name": "ClarityTap",
   "version": "1.0",
   "description": "A lightweight extension for notes, tasks, and reminders with a glassmorphism design.",
-  "permissions": ["storage", "alarms", "notifications", "offscreen"],
+  "permissions": ["storage", "alarms", "notifications", "offscreen", "declarativeNetRequest", "declarativeNetRequestWithHostAccess"],
   "action": {
     "default_popup": "popup.html"
   },
