@@ -1,7 +1,6 @@
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   chrome.notifications.create(alarm.name, {
     type: 'basic',
-    
     title: 'ClarityTap Reminder',
     message: alarm.name,
     priority: 2
