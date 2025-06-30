@@ -27,22 +27,50 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'start-focus-mode') {
     const duration = request.duration;
     const endTime = Date.now() + duration * 60 * 1000;
-    chrome.storage.local.set({ focusModeUntil: endTime });
-    chrome.declarativeNetRequest.updateEnabledRulesets({
-      enableRulesetIds: ['ruleset_1']
+    chrome.storage.local.set({ focusModeUntil: endTime }, () => {
+      updateBlockingRules();
     });
   } else if (request.type === 'stop-focus-mode') {
-    chrome.storage.local.remove('focusModeUntil');
+    chrome.storage.local.remove('focusModeUntil', () => {
+      updateBlockingRules();
+    });
   }
 });
 
-chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (changes.focusModeUntil) {
-    const { newValue, oldValue } = changes.focusModeUntil;
-    if (newValue === undefined) {
-      chrome.declarativeNetRequest.updateEnabledRulesets({
-        disableRulesetIds: ['ruleset_1']
-      });
-    }
+async function updateBlockingRules() {
+  const { blockedWebsites } = await chrome.storage.sync.get(['blockedWebsites']);
+  const { focusModeUntil } = await chrome.storage.local.get(['focusModeUntil']);
+
+  const isFocusModeActive = focusModeUntil && focusModeUntil > Date.now();
+
+  if (isFocusModeActive && blockedWebsites && blockedWebsites.length > 0) {
+    const rules = [{
+      id: 1,
+      priority: 1,
+      action: { type: 'block' },
+      condition: {
+        requestDomains: blockedWebsites,
+        resourceTypes: ['main_frame']
+      }
+    }];
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [1],
+      addRules: rules
+    });
+  } else {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      removeRuleIds: [1]
+    });
   }
+}
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (changes.blockedWebsites || (namespace === 'local' && changes.focusModeUntil)) {
+    updateBlockingRules();
+  }
+});
+
+// Ensure rules are updated on startup
+chrome.runtime.onStartup.addListener(() => {
+  updateBlockingRules();
 });
