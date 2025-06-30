@@ -44,7 +44,13 @@
       <input type="number" id="focus-duration" placeholder="Enter duration in minutes...">
       <button id="start-focus">Start Focus</button>
       <button id="stop-focus">Stop Focus</button>
-      <div id="focus-timer"></div>
+      <div id="focus-timer">
+        <svg id="timer-svg" width="120" height="120" viewBox="0 0 120 120">
+          <circle id="timer-background" cx="60" cy="60" r="54" fill="none" stroke="#e6e6e6" stroke-width="12"/>
+          <circle id="timer-progress" cx="60" cy="60" r="54" fill="none" stroke="#65dfc9" stroke-width="12" stroke-dasharray="339.292" stroke-dashoffset="339.292" transform="rotate(-90 60 60)"/>
+          <text id="timer-text" x="60" y="60" text-anchor="middle" dy=".3em" font-size="20">00:00</text>
+        </svg>
+      </div>
     </div>
   </div>
   <script src="popup.js"></script>
