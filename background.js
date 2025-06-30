@@ -28,36 +28,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const duration = request.duration;
     const endTime = Date.now() + duration * 60 * 1000;
     chrome.storage.local.set({ focusModeUntil: endTime });
-    updateBlockingRules();
+    chrome.declarativeNetRequest.updateEnabledRulesets({
+      enableRulesetIds: ['ruleset_1']
+    });
   }
 });
 
-async function updateBlockingRules() {
-  const { blockedWebsites, focusModeUntil } = await new Promise(resolve => 
-    chrome.storage.sync.get(['blockedWebsites', 'focusModeUntil'], resolve)
-  );
-
-  const rules = [];
-  if (focusModeUntil && focusModeUntil > Date.now() && blockedWebsites && blockedWebsites.length > 0) {
-    rules.push({
-      id: 1,
-      priority: 1,
-      action: { type: 'block' },
-      condition: {
-        urlFilter: `*://${blockedWebsites.join('|')}/*`,
-        resourceTypes: ['main_frame']
-      }
-    });
-  }
-
-  chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [1],
-    addRules: rules
-  });
-}
-
 chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (changes.blockedWebsites || changes.focusModeUntil) {
-    updateBlockingRules();
+  if (changes.focusModeUntil) {
+    const { newValue, oldValue } = changes.focusModeUntil;
+    if (newValue === undefined) {
+      chrome.declarativeNetRequest.updateEnabledRulesets({
+        disableRulesetIds: ['ruleset_1']
+      });
+    }
   }
 });
