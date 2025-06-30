@@ -171,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const websiteList = document.getElementById('website-list');
   const focusDurationInput = document.getElementById('focus-duration');
   const startFocusButton = document.getElementById('start-focus');
+  const stopFocusButton = document.getElementById('stop-focus');
   const focusTimerDisplay = document.getElementById('focus-timer');
 
   addWebsiteButton.addEventListener('click', () => {
@@ -218,15 +219,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  stopFocusButton.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'stop-focus-mode' });
+  });
+
   function updateFocusTimer() {
     chrome.storage.local.get(['focusModeUntil'], (data) => {
-      if (data.focusModeUntil && data.focusModeUntil > Date.now()) {
+      const focusModeActive = data.focusModeUntil && data.focusModeUntil > Date.now();
+      
+      if (focusModeActive) {
         const remainingTime = Math.round((data.focusModeUntil - Date.now()) / 1000);
         const minutes = Math.floor(remainingTime / 60);
         const seconds = remainingTime % 60;
         focusTimerDisplay.textContent = `Focus mode active: ${minutes}m ${seconds}s remaining`;
+        startFocusButton.style.display = 'none';
+        stopFocusButton.style.display = 'block';
       } else {
         focusTimerDisplay.textContent = '';
+        startFocusButton.style.display = 'block';
+        stopFocusButton.style.display = 'none';
       }
     });
   }
