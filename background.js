@@ -31,6 +31,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.declarativeNetRequest.updateEnabledRulesets({
       enableRulesetIds: ['ruleset_1']
     });
+  } else if (request.type === 'stop-focus-mode') {
+    chrome.storage.local.remove('focusModeUntil');
   }
 });
 
