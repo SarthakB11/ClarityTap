@@ -10,15 +10,6 @@
   "background": {
     "service_worker": "background.js"
   },
-  "declarative_net_request": {
-    "rule_resources": [
-      {
-        "id": "ruleset_1",
-        "enabled": false,
-        "path": "rules.json"
-      }
-    ]
-  },
   "host_permissions": [
     "<all_urls>"
   ]
