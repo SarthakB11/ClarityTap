@@ -172,7 +172,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const focusDurationInput = document.getElementById('focus-duration');
   const startFocusButton = document.getElementById('start-focus');
   const stopFocusButton = document.getElementById('stop-focus');
-  const focusTimerDisplay = document.getElementById('focus-timer');
+  const timerSVG = document.getElementById('timer-svg');
+  const timerProgress = document.getElementById('timer-progress');
+  const timerText = document.getElementById('timer-text');
+  const radius = timerProgress.r.baseVal.value;
+  const circumference = radius * 2 * Math.PI;
+
+  timerProgress.style.strokeDasharray = circumference;
+  timerProgress.style.strokeDashoffset = circumference;
+
+  function setProgress(percent) {
+    const offset = circumference - percent / 100 * circumference;
+    timerProgress.style.strokeDashoffset = offset;
+  }
 
   addWebsiteButton.addEventListener('click', () => {
     const website = websiteInput.value;
@@ -212,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
   startFocusButton.addEventListener('click', () => {
     const duration = parseInt(focusDurationInput.value, 10);
     if (duration > 0) {
+      chrome.storage.local.set({ focusModeDuration: duration });
       chrome.runtime.sendMessage({
         type: 'start-focus-mode',
         duration: duration
@@ -224,20 +237,31 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function updateFocusTimer() {
-    chrome.storage.local.get(['focusModeUntil'], (data) => {
+    chrome.storage.local.get(['focusModeUntil', 'focusModeDuration'], (data) => {
       const focusModeActive = data.focusModeUntil && data.focusModeUntil > Date.now();
       
       if (focusModeActive) {
+        const totalDuration = data.focusModeDuration * 60;
         const remainingTime = Math.round((data.focusModeUntil - Date.now()) / 1000);
         const minutes = Math.floor(remainingTime / 60);
         const seconds = remainingTime % 60;
-        focusTimerDisplay.textContent = `Focus mode active: ${minutes}m ${seconds}s remaining`;
+        
+        timerText.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        const percent = ((totalDuration - remainingTime) / totalDuration) * 100;
+        setProgress(percent);
+
+        timerSVG.style.display = 'block';
         startFocusButton.style.display = 'none';
         stopFocusButton.style.display = 'block';
+        focusDurationInput.style.display = 'none';
       } else {
-        focusTimerDisplay.textContent = '';
+        timerSVG.style.display = 'none';
         startFocusButton.style.display = 'block';
         stopFocusButton.style.display = 'none';
+        focusDurationInput.style.display = 'block';
+        timerText.textContent = "00:00";
+        setProgress(0);
       }
     });
   }

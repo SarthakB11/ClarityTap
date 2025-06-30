@@ -196,3 +196,19 @@ ul::-webkit-scrollbar-thumb {
 ul::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
 }
+#focus-timer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+#timer-svg {
+  display: none; /* Hidden by default */
+}
+
+#timer-text {
+  fill: #fff;
+  font-weight: bold;
+}
+
