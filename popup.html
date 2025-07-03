@@ -54,6 +54,24 @@
       </div>
     </div>
   </div>
+  <div class="modal-overlay" id="note-modal">
+    <div class="modal-content">
+      <div id="modal-note-content"></div>
+      <div id="modal-editor-container" style="display: none;">
+        <div id="modal-editor"></div>
+        <button id="modal-save-button">Save</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="custom-confirm-modal" style="display: none;">
+    <div class="modal-content">
+      <p id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button id="confirm-yes-button">Confirm</button>
+        <button id="confirm-no-button">Cancel</button>
+      </div>
+    </div>
+  </div>
   <script src="vendor/quill.js"></script>
   <script src="popup.js"></script>
 </body>
