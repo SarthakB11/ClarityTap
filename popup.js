@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  const quill = new Quill('#editor', {
+  const mainQuill = new Quill('#editor', {
     theme: 'snow',
     modules: {
       toolbar: [
@@ -22,22 +22,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  let modalQuill;
+
+  // Custom Confirm Modal
+  const customConfirmModal = document.getElementById('custom-confirm-modal');
+  const confirmMessage = document.getElementById('confirm-message');
+  const confirmYesButton = document.getElementById('confirm-yes-button');
+  const confirmNoButton = document.getElementById('confirm-no-button');
+
+  function showConfirm(message, callback) {
+    confirmMessage.textContent = message;
+    customConfirmModal.style.display = 'flex';
+
+    confirmYesButton.onclick = () => {
+      customConfirmModal.style.display = 'none';
+      callback(true);
+    };
+
+    confirmNoButton.onclick = () => {
+      customConfirmModal.style.display = 'none';
+      callback(false);
+    };
+  }
+
   // Notes
   const saveNoteButton = document.getElementById('save-note');
   const notesList = document.getElementById('notes-list');
 
   saveNoteButton.addEventListener('click', () => {
-    const noteContent = quill.root.innerHTML;
-    if (noteContent) {
-      chrome.storage.sync.get({notes: []}, (data) => {
-        const notes = data.notes;
-        notes.push(noteContent);
-        chrome.storage.sync.set({notes: notes}, () => {
-          quill.root.innerHTML = '';
-          renderNotes();
-        });
-      });
-    }
+    showConfirm('Are you sure you want to save this note?', (confirmed) => {
+      if (confirmed) {
+        const noteContent = mainQuill.root.innerHTML;
+        if (noteContent) {
+          chrome.storage.sync.get({notes: []}, (data) => {
+            const notes = data.notes;
+            notes.push(noteContent);
+            chrome.storage.sync.set({notes: notes}, () => {
+              mainQuill.root.innerHTML = '';
+              renderNotes();
+            });
+          });
+        }
+      }
+    });
   });
 
   function renderNotes() {
@@ -50,10 +77,158 @@ document.addEventListener('DOMContentLoaded', () => {
         const noteElement = document.createElement('div');
         noteElement.innerHTML = note;
         
+        const actionsContainer = document.createElement('div');
+        actionsContainer.classList.add('note-actions');
+        
+        const displayIcon = document.createElement('img');
+        displayIcon.src = 'images/icons/eye.svg';
+        displayIcon.classList.add('note-action');
+        displayIcon.addEventListener('click', () => openNoteModal(note, index));
+        
+        const editIcon = document.createElement('img');
+        editIcon.src = 'images/icons/pencil.svg';
+        editIcon.classList.add('note-action');
+        editIcon.addEventListener('click', () => editNote(index, note));
+        
+        const deleteIcon = document.createElement('img');
+        deleteIcon.src = 'images/icons/trash.svg';
+        deleteIcon.classList.add('note-action');
+        deleteIcon.addEventListener('click', () => deleteNote(index));
+        
+        actionsContainer.appendChild(displayIcon);
+        actionsContainer.appendChild(editIcon);
+        actionsContainer.appendChild(deleteIcon);
+        
         noteContainer.appendChild(noteElement);
+        noteContainer.appendChild(actionsContainer);
         notesList.appendChild(noteContainer);
       });
     });
+  }
+
+  function openNoteModal(noteContent, index) {
+    const modal = document.getElementById('note-modal');
+    const modalNoteContent = document.getElementById('modal-note-content');
+    const modalEditorContainer = document.getElementById('modal-editor-container');
+    
+    modalNoteContent.innerHTML = ''; // Clear previous content
+    modalEditorContainer.style.display = 'none';
+    modalNoteContent.style.display = 'block';
+
+    const noteElement = document.createElement('div');
+    noteElement.innerHTML = noteContent;
+
+    const actionsContainer = document.createElement('div');
+    actionsContainer.classList.add('note-actions');
+    
+    const editIcon = document.createElement('img');
+    editIcon.src = 'images/icons/pencil.svg';
+    editIcon.classList.add('note-action');
+    editIcon.addEventListener('click', () => {
+      editNoteInModal(index, noteContent);
+    });
+    
+    const deleteIcon = document.createElement('img');
+    deleteIcon.src = 'images/icons/trash.svg';
+    deleteIcon.classList.add('note-action');
+    deleteIcon.addEventListener('click', () => {
+      showConfirm('Are you sure you want to delete this note?', (confirmed) => {
+        if (confirmed) {
+          deleteNote(index);
+          closeNoteModal();
+        }
+      });
+    });
+    
+    actionsContainer.appendChild(editIcon);
+    actionsContainer.appendChild(deleteIcon);
+
+    modalNoteContent.appendChild(noteElement);
+    modalNoteContent.appendChild(actionsContainer);
+    modal.style.display = 'flex';
+  }
+
+  function editNoteInModal(index, noteContent) {
+    const modalNoteContent = document.getElementById('modal-note-content');
+    const modalEditorContainer = document.getElementById('modal-editor-container');
+    const modalSaveButton = document.getElementById('modal-save-button');
+
+    modalNoteContent.style.display = 'none';
+    modalEditorContainer.style.display = 'block';
+
+    if (!modalQuill) {
+      modalQuill = new Quill('#modal-editor', {
+        theme: 'snow',
+        modules: {
+          toolbar: [
+            [{ 'header': [1, 2, false] }],
+            ['bold', 'italic', 'underline'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }]
+          ]
+        }
+      });
+    }
+    modalQuill.root.innerHTML = noteContent;
+
+    modalSaveButton.onclick = () => {
+      showConfirm('Are you sure you want to save the changes?', (confirmed) => {
+        if (confirmed) {
+          const updatedContent = modalQuill.root.innerHTML;
+          chrome.storage.sync.get({notes: []}, (data) => {
+            const notes = data.notes;
+            notes[index] = updatedContent;
+            chrome.storage.sync.set({notes: notes}, () => {
+              closeNoteModal();
+              renderNotes();
+            });
+          });
+        }
+      });
+    };
+  }
+
+  function closeNoteModal() {
+    const modal = document.getElementById('note-modal');
+    modal.style.display = 'none';
+  }
+
+  document.getElementById('note-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'note-modal') {
+      closeNoteModal();
+    }
+  });
+
+  function editNote(index, noteContent) {
+    showConfirm('Are you sure you want to edit this note? This will overwrite the current content in the main editor.', (confirmed) => {
+      if (confirmed) {
+        mainQuill.root.innerHTML = noteContent;
+        deleteNote(index, true);
+      }
+    });
+  }
+
+  function deleteNote(index, isEditing = false) {
+    if (isEditing) {
+      chrome.storage.sync.get({notes: []}, (data) => {
+        const notes = data.notes;
+        notes.splice(index, 1);
+        chrome.storage.sync.set({notes: notes}, () => {
+          renderNotes();
+        });
+      });
+    } else {
+      showConfirm('Are you sure you want to delete this note?', (confirmed) => {
+        if (confirmed) {
+          chrome.storage.sync.get({notes: []}, (data) => {
+            const notes = data.notes;
+            notes.splice(index, 1);
+            chrome.storage.sync.set({notes: notes}, () => {
+              renderNotes();
+            });
+          });
+        }
+      });
+    }
   }
 
   // Tasks
@@ -62,17 +237,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const taskList = document.getElementById('task-list');
 
   addTaskButton.addEventListener('click', () => {
-    const taskText = taskInput.value;
-    if (taskText) {
-      chrome.storage.sync.get({tasks: []}, (data) => {
-        const tasks = data.tasks;
-        tasks.push({text: taskText, completed: false});
-        chrome.storage.sync.set({tasks: tasks}, () => {
-          taskInput.value = '';
-          renderTasks();
-        });
-      });
-    }
+    showConfirm('Are you sure you want to add this task?', (confirmed) => {
+      if (confirmed) {
+        const taskText = taskInput.value;
+        if (taskText) {
+          chrome.storage.sync.get({tasks: []}, (data) => {
+            const tasks = data.tasks;
+            tasks.push({text: taskText, completed: false});
+            chrome.storage.sync.set({tasks: tasks}, () => {
+              taskInput.value = '';
+              renderTasks();
+            });
+          });
+        }
+      }
+    });
   });
 
   function renderTasks() {
@@ -95,8 +274,12 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteButton.textContent = 'X';
         deleteButton.classList.add('delete-button');
         deleteButton.addEventListener('click', () => {
-          data.tasks.splice(index, 1);
-          chrome.storage.sync.set({tasks: data.tasks}, renderTasks);
+          showConfirm('Are you sure you want to delete this task?', (confirmed) => {
+            if (confirmed) {
+              data.tasks.splice(index, 1);
+              chrome.storage.sync.set({tasks: data.tasks}, renderTasks);
+            }
+          });
         });
 
         taskElement.prepend(completeButton);
@@ -114,40 +297,44 @@ document.addEventListener('DOMContentLoaded', () => {
   const reminderList = document.getElementById('reminder-list');
 
   setReminderButton.addEventListener('click', () => {
-    const reminderText = reminderInput.value;
-    const reminderTimestamp = new Date(reminderTime.value).getTime();
-    const recurrence = recurrenceUnit.value;
+    showConfirm('Are you sure you want to set this reminder?', (confirmed) => {
+      if (confirmed) {
+        const reminderText = reminderInput.value;
+        const reminderTimestamp = new Date(reminderTime.value).getTime();
+        const recurrence = recurrenceUnit.value;
 
-    if (reminderText && reminderTimestamp > Date.now()) {
-      let periodInMinutes;
-      if (recurrence === 'daily') {
-        periodInMinutes = 24 * 60;
-      } else if (recurrence === 'weekly') {
-        periodInMinutes = 7 * 24 * 60;
-      } else if (recurrence === 'monthly') {
-        periodInMinutes = 30 * 24 * 60; // Approximate
+        if (reminderText && reminderTimestamp > Date.now()) {
+          let periodInMinutes;
+          if (recurrence === 'daily') {
+            periodInMinutes = 24 * 60;
+          } else if (recurrence === 'weekly') {
+            periodInMinutes = 7 * 24 * 60;
+          } else if (recurrence === 'monthly') {
+            periodInMinutes = 30 * 24 * 60; // Approximate
+          }
+
+          chrome.alarms.create(reminderText, { 
+            when: reminderTimestamp,
+            periodInMinutes: periodInMinutes
+          });
+
+          chrome.storage.sync.get({reminders: []}, (data) => {
+            const reminders = data.reminders;
+            reminders.push({
+              text: reminderText, 
+              time: reminderTimestamp,
+              recurrence: recurrence
+            });
+            chrome.storage.sync.set({reminders: reminders}, () => {
+              reminderInput.value = '';
+              reminderTime.value = '';
+              recurrenceUnit.value = 'none';
+              renderReminders();
+            });
+          });
+        }
       }
-
-      chrome.alarms.create(reminderText, { 
-        when: reminderTimestamp,
-        periodInMinutes: periodInMinutes
-      });
-
-      chrome.storage.sync.get({reminders: []}, (data) => {
-        const reminders = data.reminders;
-        reminders.push({
-          text: reminderText, 
-          time: reminderTimestamp,
-          recurrence: recurrence
-        });
-        chrome.storage.sync.set({reminders: reminders}, () => {
-          reminderInput.value = '';
-          reminderTime.value = '';
-          recurrenceUnit.value = 'none';
-          renderReminders();
-        });
-      });
-    }
+    });
   });
 
   function renderReminders() {
@@ -165,9 +352,13 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteButton.textContent = 'X';
         deleteButton.classList.add('delete-button');
         deleteButton.addEventListener('click', () => {
-          chrome.alarms.clear(reminder.text);
-          data.reminders.splice(index, 1);
-          chrome.storage.sync.set({reminders: data.reminders}, renderReminders);
+          showConfirm('Are you sure you want to delete this reminder?', (confirmed) => {
+            if (confirmed) {
+              chrome.alarms.clear(reminder.text);
+              data.reminders.splice(index, 1);
+              chrome.storage.sync.set({reminders: data.reminders}, renderReminders);
+            }
+          });
         });
 
         reminderElement.appendChild(deleteButton);
@@ -175,10 +366,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
-
-  renderNotes();
-  renderTasks();
-  renderReminders();
 
   // Focus Mode
   const websiteInput = document.getElementById('website-input');
@@ -226,8 +413,12 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteButton.textContent = 'X';
         deleteButton.classList.add('delete-button');
         deleteButton.addEventListener('click', () => {
-          data.blockedWebsites.splice(index, 1);
-          chrome.storage.sync.set({blockedWebsites: data.blockedWebsites}, renderBlockedWebsites);
+          showConfirm('Are you sure you want to remove this website?', (confirmed) => {
+            if (confirmed) {
+              data.blockedWebsites.splice(index, 1);
+              chrome.storage.sync.set({blockedWebsites: data.blockedWebsites}, renderBlockedWebsites);
+            }
+          });
         });
 
         websiteElement.appendChild(deleteButton);
@@ -281,6 +472,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  renderNotes();
+  renderTasks();
+  renderReminders();
   renderBlockedWebsites();
   updateFocusTimer();
   setInterval(updateFocusTimer, 1000);
