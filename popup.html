@@ -3,6 +3,7 @@
 <head>
   <title>ClarityTap</title>
   <link rel="stylesheet" type="text/css" href="popup.css">
+  <link rel="stylesheet" type="text/css" href="vendor/quill.snow.css">
 </head>
 <body>
   <div class="container">
@@ -14,7 +15,7 @@
       <button class="tab-button" data-tab="focus-mode">Focus Mode</button>
     </div>
     <div id="notes" class="tab-content active">
-      <textarea id="note-input" placeholder="Write a note..."></textarea>
+      <div id="editor"></div>
       <button id="save-note">Save Note</button>
       <div id="notes-list"></div>
     </div>
@@ -53,6 +54,7 @@
       </div>
     </div>
   </div>
+  <script src="vendor/quill.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

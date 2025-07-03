@@ -11,19 +11,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  const quill = new Quill('#editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ 'header': [1, 2, false] }],
+        ['bold', 'italic', 'underline'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }]
+      ]
+    }
+  });
+
   // Notes
-  const noteInput = document.getElementById('note-input');
   const saveNoteButton = document.getElementById('save-note');
   const notesList = document.getElementById('notes-list');
 
   saveNoteButton.addEventListener('click', () => {
-    const noteText = noteInput.value;
-    if (noteText) {
+    const noteContent = quill.root.innerHTML;
+    if (noteContent) {
       chrome.storage.sync.get({notes: []}, (data) => {
         const notes = data.notes;
-        notes.push(noteText);
+        notes.push(noteContent);
         chrome.storage.sync.set({notes: notes}, () => {
-          noteInput.value = '';
+          quill.root.innerHTML = '';
           renderNotes();
         });
       });
@@ -34,9 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.sync.get({notes: []}, (data) => {
       notesList.innerHTML = '';
       data.notes.forEach((note, index) => {
+        const noteContainer = document.createElement('div');
+        noteContainer.classList.add('note-container');
+        
         const noteElement = document.createElement('div');
-        noteElement.textContent = note;
-        notesList.appendChild(noteElement);
+        noteElement.innerHTML = note;
+        
+        noteContainer.appendChild(noteElement);
+        notesList.appendChild(noteContainer);
       });
     });
   }
