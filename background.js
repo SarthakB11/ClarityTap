@@ -1,18 +1,69 @@
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  chrome.notifications.create(alarm.name, {
-    type: 'basic',
-    title: 'ClarityTap Reminder',
-    message: alarm.name,
-    priority: 2
-  });
+  const { reminders } = await chrome.storage.sync.get(['reminders']);
+  const reminder = reminders.find(r => r.text === alarm.name);
 
-  // Play a sound using the offscreen API
-  await createOffscreen();
-  chrome.runtime.sendMessage({
-    type: 'play-audio',
-    url: 'audio/alarm.mp3'
-  });
+  if (reminder) {
+    chrome.notifications.create(alarm.name, {
+      type: 'basic',
+      title: 'ClarityTap Reminder',
+      message: alarm.name,
+      priority: 2
+    });
+
+    await createOffscreen();
+    chrome.runtime.sendMessage({
+      type: 'play-audio',
+      url: 'audio/alarm.mp3'
+    });
+
+    if (reminder.recurrence && reminder.recurrence.type !== 'none') {
+      const nextAlarmTime = calculateNextAlarm(reminder);
+      if (nextAlarmTime) {
+        chrome.alarms.create(reminder.text, { when: nextAlarmTime });
+      } else {
+        // If no next alarm, remove it from storage
+        const updatedReminders = reminders.filter(r => r.text !== alarm.name);
+        await chrome.storage.sync.set({ reminders: updatedReminders });
+      }
+    }
+  }
 });
+
+function calculateNextAlarm(reminder) {
+  const now = new Date();
+  const endDate = reminder.recurrence.endDate ? new Date(reminder.recurrence.endDate) : null;
+
+  if (endDate && now > endDate) {
+    return null;
+  }
+
+  let nextAlarm = new Date(reminder.time);
+
+  switch (reminder.recurrence.type) {
+    case 'daily':
+      nextAlarm.setDate(nextAlarm.getDate() + 1);
+      break;
+    case 'weekly':
+      const currentDay = nextAlarm.getDay();
+      const selectedDays = reminder.recurrence.days.sort((a, b) => a - b);
+      let nextDay = selectedDays.find(day => day > currentDay);
+      if (nextDay === undefined) {
+        nextDay = selectedDays[0];
+        nextAlarm.setDate(nextAlarm.getDate() + (7 - currentDay + nextDay));
+      } else {
+        nextAlarm.setDate(nextAlarm.getDate() + (nextDay - currentDay));
+      }
+      break;
+    case 'monthly':
+      nextAlarm.setMonth(nextAlarm.getMonth() + 1);
+      break;
+    default:
+      return null;
+  }
+
+  return nextAlarm.getTime();
+}
+
 
 async function createOffscreen() {
   if (await chrome.offscreen.hasDocument()) return;
@@ -23,8 +74,21 @@ async function createOffscreen() {
   });
 }
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'start-focus-mode') {
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+  if (request.type === 'set-reminder') {
+    const { reminders } = await chrome.storage.sync.get({reminders: []});
+    reminders.push(request.reminder);
+    await chrome.storage.sync.set({ reminders });
+    chrome.alarms.create(request.reminder.text, { when: request.reminder.time });
+  } else if (request.type === 'delete-reminder') {
+    const { reminders } = await chrome.storage.sync.get({reminders: []});
+    const reminderToDelete = reminders[request.index];
+    if (reminderToDelete) {
+      chrome.alarms.clear(reminderToDelete.text);
+      const updatedReminders = reminders.filter((_, i) => i !== request.index);
+      await chrome.storage.sync.set({ reminders: updatedReminders });
+    }
+  } else if (request.type === 'start-focus-mode') {
     const duration = request.duration;
     const endTime = Date.now() + duration * 60 * 1000;
     chrome.storage.local.set({ focusModeUntil: endTime }, () => {
@@ -49,7 +113,7 @@ async function updateBlockingRules() {
       priority: 1,
       action: { type: 'block' },
       condition: {
-        requestDomains: blockedWebsites,
+        urlFilter: `*://${blockedWebsites.join('/*, *://')}`,
         resourceTypes: ['main_frame']
       }
     }];
