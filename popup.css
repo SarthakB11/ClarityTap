@@ -305,5 +305,29 @@ ul::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(to right, #ff6b6b, #ff8e8e);
 }
 
+.weekday-selector {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.weekday-selector input {
+  display: none;
+}
+
+.weekday-selector label {
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  transition: background 0.3s ease;
+}
+
+.weekday-selector input:checked + label {
+  background: #65dfc9;
+}
+
+
 
 

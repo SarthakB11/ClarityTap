@@ -32,7 +32,28 @@
         <option value="daily">Daily</option>
         <option value="weekly">Weekly</option>
         <option value="monthly">Monthly</option>
+        <option value="custom">Custom</option>
       </select>
+      <div id="custom-recurrence" style="display: none;">
+        <div id="weekly-recurrence">
+          <label>Repeat on:</label>
+          <div class="weekday-selector">
+            <input type="checkbox" id="weekday-sun" value="0"><label for="weekday-sun">S</label>
+            <input type="checkbox" id="weekday-mon" value="1"><label for="weekday-mon">M</label>
+            <input type="checkbox" id="weekday-tue" value="2"><label for="weekday-tue">T</label>
+            <input type="checkbox" id="weekday-wed" value="3"><label for="weekday-wed">W</label>
+            <input type="checkbox" id="weekday-thu" value="4"><label for="weekday-thu">T</label>
+            <input type="checkbox" id="weekday-fri" value="5"><label for="weekday-fri">F</label>
+            <input type="checkbox" id="weekday-sat" value="6"><label for="weekday-sat">S</label>
+          </div>
+        </div>
+        <div id="monthly-recurrence" style="display: none;">
+          <label for="day-of-month">Day of month:</label>
+          <input type="number" id="day-of-month" min="1" max="31">
+        </div>
+        <label for="recurrence-end">End date:</label>
+        <input type="date" id="recurrence-end">
+      </div>
       <button id="set-reminder">Set Reminder</button>
       <ul id="reminder-list"></ul>
     </div>

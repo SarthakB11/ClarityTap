@@ -293,8 +293,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const reminderInput = document.getElementById('reminder-input');
   const reminderTime = document.getElementById('reminder-time');
   const recurrenceUnit = document.getElementById('recurrence-unit');
+  const customRecurrence = document.getElementById('custom-recurrence');
+  const weeklyRecurrence = document.getElementById('weekly-recurrence');
+  const monthlyRecurrence = document.getElementById('monthly-recurrence');
   const setReminderButton = document.getElementById('set-reminder');
   const reminderList = document.getElementById('reminder-list');
+
+  recurrenceUnit.addEventListener('change', () => {
+    if (recurrenceUnit.value === 'custom') {
+      customRecurrence.style.display = 'block';
+    } else {
+      customRecurrence.style.display = 'none';
+    }
+
+    if (recurrenceUnit.value === 'weekly') {
+      weeklyRecurrence.style.display = 'block';
+      monthlyRecurrence.style.display = 'none';
+    } else if (recurrenceUnit.value === 'monthly') {
+      weeklyRecurrence.style.display = 'none';
+      monthlyRecurrence.style.display = 'block';
+    } else {
+      weeklyRecurrence.style.display = 'none';
+      monthlyRecurrence.style.display = 'none';
+    }
+  });
 
   setReminderButton.addEventListener('click', () => {
     showConfirm('Are you sure you want to set this reminder?', (confirmed) => {
@@ -302,36 +324,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const reminderText = reminderInput.value;
         const reminderTimestamp = new Date(reminderTime.value).getTime();
         const recurrence = recurrenceUnit.value;
+        
+        let recurrenceData = {
+          type: recurrence,
+          endDate: document.getElementById('recurrence-end').value
+        };
+
+        if (recurrence === 'weekly') {
+          const selectedDays = [];
+          document.querySelectorAll('.weekday-selector input:checked').forEach(day => {
+            selectedDays.push(parseInt(day.value));
+          });
+          recurrenceData.days = selectedDays;
+        } else if (recurrence === 'monthly') {
+          recurrenceData.dayOfMonth = parseInt(document.getElementById('day-of-month').value);
+        }
 
         if (reminderText && reminderTimestamp > Date.now()) {
-          let periodInMinutes;
-          if (recurrence === 'daily') {
-            periodInMinutes = 24 * 60;
-          } else if (recurrence === 'weekly') {
-            periodInMinutes = 7 * 24 * 60;
-          } else if (recurrence === 'monthly') {
-            periodInMinutes = 30 * 24 * 60; // Approximate
-          }
-
-          chrome.alarms.create(reminderText, { 
-            when: reminderTimestamp,
-            periodInMinutes: periodInMinutes
-          });
-
-          chrome.storage.sync.get({reminders: []}, (data) => {
-            const reminders = data.reminders;
-            reminders.push({
-              text: reminderText, 
+          chrome.runtime.sendMessage({
+            type: 'set-reminder',
+            reminder: {
+              text: reminderText,
               time: reminderTimestamp,
-              recurrence: recurrence
-            });
-            chrome.storage.sync.set({reminders: reminders}, () => {
-              reminderInput.value = '';
-              reminderTime.value = '';
-              recurrenceUnit.value = 'none';
-              renderReminders();
-            });
+              recurrence: recurrenceData
+            }
           });
+
+          reminderInput.value = '';
+          reminderTime.value = '';
+          recurrenceUnit.value = 'none';
+          customRecurrence.style.display = 'none';
+          renderReminders();
         }
       }
     });
@@ -343,8 +366,8 @@ document.addEventListener('DOMContentLoaded', () => {
       data.reminders.forEach((reminder, index) => {
         const reminderElement = document.createElement('li');
         let recurrenceText = '';
-        if (reminder.recurrence && reminder.recurrence !== 'none') {
-          recurrenceText = `(Repeats ${reminder.recurrence})`;
+        if (reminder.recurrence && reminder.recurrence.type !== 'none') {
+          recurrenceText = `(Repeats ${reminder.recurrence.type})`;
         }
         reminderElement.textContent = `${reminder.text} - ${new Date(reminder.time).toLocaleString()} ${recurrenceText}`;
         
@@ -354,9 +377,8 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteButton.addEventListener('click', () => {
           showConfirm('Are you sure you want to delete this reminder?', (confirmed) => {
             if (confirmed) {
-              chrome.alarms.clear(reminder.text);
-              data.reminders.splice(index, 1);
-              chrome.storage.sync.set({reminders: data.reminders}, renderReminders);
+              chrome.runtime.sendMessage({type: 'delete-reminder', index: index});
+              renderReminders();
             }
           });
         });
