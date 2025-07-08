@@ -1,6 +1,65 @@
 document.addEventListener('DOMContentLoaded', () => {
+  const authContainer = document.getElementById('auth-container');
+  const mainContainer = document.getElementById('main-container');
+  const loginButton = document.getElementById('login-button');
+  const logoutButton = document.getElementById('logout-button');
+  const userName = document.getElementById('user-name');
+
   const tabs = document.querySelectorAll('.tab-button');
   const contents = document.querySelectorAll('.tab-content');
+
+  let db;
+  let currentUser = null;
+
+  // Ask the background script for the current user status when the popup opens
+  chrome.runtime.sendMessage({ type: 'get-user-status' }, (response) => {
+    if (response && response.user) {
+      updateUIForUser(response.user);
+    } else {
+      updateUIForGuest();
+    }
+  });
+
+  function updateUIForUser(user) {
+    currentUser = user;
+    authContainer.style.display = 'none';
+    mainContainer.style.display = 'block';
+    userName.textContent = user.displayName;
+    if (!db) {
+      db = firebase.firestore();
+    }
+    renderNotes();
+    renderTasks();
+    renderReminders();
+    renderBlockedWebsites();
+  }
+
+  function updateUIForGuest() {
+    currentUser = null;
+    authContainer.style.display = 'block';
+    mainContainer.style.display = 'none';
+    db = null;
+  }
+
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      updateUIForUser(user);
+    } else {
+      updateUIForGuest();
+    }
+  });
+
+  loginButton.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'login' }, (response) => {
+      if (response && response.user) {
+        updateUIForUser(response.user);
+      }
+    });
+  });
+
+  logoutButton.addEventListener('click', () => {
+    firebase.auth().signOut();
+  });
 
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -53,14 +112,13 @@ document.addEventListener('DOMContentLoaded', () => {
     showConfirm('Are you sure you want to save this note?', (confirmed) => {
       if (confirmed) {
         const noteContent = mainQuill.root.innerHTML;
-        if (noteContent) {
-          chrome.storage.sync.get({notes: []}, (data) => {
-            const notes = data.notes;
-            notes.push(noteContent);
-            chrome.storage.sync.set({notes: notes}, () => {
-              mainQuill.root.innerHTML = '';
-              renderNotes();
-            });
+        if (noteContent && db && currentUser) {
+          db.collection('users').doc(currentUser.uid).collection('notes').add({
+            content: noteContent,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).then(() => {
+            mainQuill.root.innerHTML = '';
+            renderNotes();
           });
         }
       }
@@ -68,14 +126,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function renderNotes() {
-    chrome.storage.sync.get({notes: []}, (data) => {
+    if (!db || !currentUser) return;
+    db.collection('users').doc(currentUser.uid).collection('notes').orderBy('createdAt', 'desc').get().then((snapshot) => {
       notesList.innerHTML = '';
-      data.notes.forEach((note, index) => {
+      snapshot.forEach(doc => {
+        const note = doc.data();
         const noteContainer = document.createElement('div');
         noteContainer.classList.add('note-container');
         
         const noteElement = document.createElement('div');
-        noteElement.innerHTML = note;
+        noteElement.innerHTML = note.content;
         
         const actionsContainer = document.createElement('div');
         actionsContainer.classList.add('note-actions');
@@ -83,17 +143,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const displayIcon = document.createElement('img');
         displayIcon.src = 'images/icons/eye.svg';
         displayIcon.classList.add('note-action');
-        displayIcon.addEventListener('click', () => openNoteModal(note, index));
+        displayIcon.addEventListener('click', () => openNoteModal(note.content, doc.id));
         
         const editIcon = document.createElement('img');
         editIcon.src = 'images/icons/pencil.svg';
         editIcon.classList.add('note-action');
-        editIcon.addEventListener('click', () => editNote(index, note));
+        editIcon.addEventListener('click', () => editNote(doc.id, note.content));
         
         const deleteIcon = document.createElement('img');
         deleteIcon.src = 'images/icons/trash.svg';
         deleteIcon.classList.add('note-action');
-        deleteIcon.addEventListener('click', () => deleteNote(index));
+        deleteIcon.addEventListener('click', () => deleteNote(doc.id));
         
         actionsContainer.appendChild(displayIcon);
         actionsContainer.appendChild(editIcon);
@@ -106,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function openNoteModal(noteContent, index) {
+  function openNoteModal(noteContent, id) {
     const modal = document.getElementById('note-modal');
     const modalNoteContent = document.getElementById('modal-note-content');
     const modalEditorContainer = document.getElementById('modal-editor-container');
@@ -125,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     editIcon.src = 'images/icons/pencil.svg';
     editIcon.classList.add('note-action');
     editIcon.addEventListener('click', () => {
-      editNoteInModal(index, noteContent);
+      editNoteInModal(id, noteContent);
     });
     
     const deleteIcon = document.createElement('img');
@@ -134,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteIcon.addEventListener('click', () => {
       showConfirm('Are you sure you want to delete this note?', (confirmed) => {
         if (confirmed) {
-          deleteNote(index);
+          deleteNote(id);
           closeNoteModal();
         }
       });
@@ -148,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.style.display = 'flex';
   }
 
-  function editNoteInModal(index, noteContent) {
+  function editNoteInModal(id, noteContent) {
     const modalNoteContent = document.getElementById('modal-note-content');
     const modalEditorContainer = document.getElementById('modal-editor-container');
     const modalSaveButton = document.getElementById('modal-save-button');
@@ -174,14 +234,14 @@ document.addEventListener('DOMContentLoaded', () => {
       showConfirm('Are you sure you want to save the changes?', (confirmed) => {
         if (confirmed) {
           const updatedContent = modalQuill.root.innerHTML;
-          chrome.storage.sync.get({notes: []}, (data) => {
-            const notes = data.notes;
-            notes[index] = updatedContent;
-            chrome.storage.sync.set({notes: notes}, () => {
+          if (db && currentUser) {
+            db.collection('users').doc(currentUser.uid).collection('notes').doc(id).update({
+              content: updatedContent
+            }).then(() => {
               closeNoteModal();
               renderNotes();
             });
-          });
+          }
         }
       });
     };
@@ -198,33 +258,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  function editNote(index, noteContent) {
+  function editNote(id, noteContent) {
     showConfirm('Are you sure you want to edit this note? This will overwrite the current content in the main editor.', (confirmed) => {
       if (confirmed) {
         mainQuill.root.innerHTML = noteContent;
-        deleteNote(index, true);
+        deleteNote(id, true);
       }
     });
   }
 
-  function deleteNote(index, isEditing = false) {
+  function deleteNote(id, isEditing = false) {
+    if (!currentUser) return;
     if (isEditing) {
-      chrome.storage.sync.get({notes: []}, (data) => {
-        const notes = data.notes;
-        notes.splice(index, 1);
-        chrome.storage.sync.set({notes: notes}, () => {
+      if (db) {
+        db.collection('users').doc(currentUser.uid).collection('notes').doc(id).delete().then(() => {
           renderNotes();
         });
-      });
+      }
     } else {
       showConfirm('Are you sure you want to delete this note?', (confirmed) => {
-        if (confirmed) {
-          chrome.storage.sync.get({notes: []}, (data) => {
-            const notes = data.notes;
-            notes.splice(index, 1);
-            chrome.storage.sync.set({notes: notes}, () => {
-              renderNotes();
-            });
+        if (confirmed && db) {
+          db.collection('users').doc(currentUser.uid).collection('notes').doc(id).delete().then(() => {
+            renderNotes();
           });
         }
       });
@@ -240,14 +295,14 @@ document.addEventListener('DOMContentLoaded', () => {
     showConfirm('Are you sure you want to add this task?', (confirmed) => {
       if (confirmed) {
         const taskText = taskInput.value;
-        if (taskText) {
-          chrome.storage.sync.get({tasks: []}, (data) => {
-            const tasks = data.tasks;
-            tasks.push({text: taskText, completed: false});
-            chrome.storage.sync.set({tasks: tasks}, () => {
-              taskInput.value = '';
-              renderTasks();
-            });
+        if (taskText && db && currentUser) {
+          db.collection('users').doc(currentUser.uid).collection('tasks').add({
+            text: taskText,
+            completed: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).then(() => {
+            taskInput.value = '';
+            renderTasks();
           });
         }
       }
@@ -255,9 +310,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function renderTasks() {
-    chrome.storage.sync.get({tasks: []}, (data) => {
+    if (!db || !currentUser) return;
+    db.collection('users').doc(currentUser.uid).collection('tasks').orderBy('createdAt', 'desc').get().then((snapshot) => {
       taskList.innerHTML = '';
-      data.tasks.forEach((task, index) => {
+      snapshot.forEach(doc => {
+        const task = doc.data();
         const taskElement = document.createElement('li');
         taskElement.textContent = task.text;
         taskElement.style.textDecoration = task.completed ? 'line-through' : 'none';
@@ -266,8 +323,9 @@ document.addEventListener('DOMContentLoaded', () => {
         completeButton.type = 'checkbox';
         completeButton.checked = task.completed;
         completeButton.addEventListener('change', () => {
-          data.tasks[index].completed = completeButton.checked;
-          chrome.storage.sync.set({tasks: data.tasks}, renderTasks);
+          db.collection('users').doc(currentUser.uid).collection('tasks').doc(doc.id).update({
+            completed: completeButton.checked
+          }).then(renderTasks);
         });
 
         const deleteButton = document.createElement('button');
@@ -276,8 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteButton.addEventListener('click', () => {
           showConfirm('Are you sure you want to delete this task?', (confirmed) => {
             if (confirmed) {
-              data.tasks.splice(index, 1);
-              chrome.storage.sync.set({tasks: data.tasks}, renderTasks);
+              db.collection('users').doc(currentUser.uid).collection('tasks').doc(doc.id).delete().then(renderTasks);
             }
           });
         });
@@ -340,30 +397,30 @@ document.addEventListener('DOMContentLoaded', () => {
           recurrenceData.dayOfMonth = parseInt(document.getElementById('day-of-month').value);
         }
 
-        if (reminderText && reminderTimestamp > Date.now()) {
-          chrome.runtime.sendMessage({
-            type: 'set-reminder',
-            reminder: {
-              text: reminderText,
-              time: reminderTimestamp,
-              recurrence: recurrenceData
-            }
+        if (reminderText && reminderTimestamp > Date.now() && db && currentUser) {
+          db.collection('users').doc(currentUser.uid).collection('reminders').add({
+            text: reminderText,
+            time: reminderTimestamp,
+            recurrence: recurrenceData,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).then(() => {
+            reminderInput.value = '';
+            reminderTime.value = '';
+            recurrenceUnit.value = 'none';
+            customRecurrence.style.display = 'none';
+            renderReminders();
           });
-
-          reminderInput.value = '';
-          reminderTime.value = '';
-          recurrenceUnit.value = 'none';
-          customRecurrence.style.display = 'none';
-          renderReminders();
         }
       }
     });
   });
 
   function renderReminders() {
-    chrome.storage.sync.get({reminders: []}, (data) => {
+    if (!db || !currentUser) return;
+    db.collection('users').doc(currentUser.uid).collection('reminders').orderBy('createdAt', 'desc').get().then((snapshot) => {
       reminderList.innerHTML = '';
-      data.reminders.forEach((reminder, index) => {
+      snapshot.forEach(doc => {
+        const reminder = doc.data();
         const reminderElement = document.createElement('li');
         let recurrenceText = '';
         if (reminder.recurrence && reminder.recurrence.type !== 'none') {
@@ -377,8 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteButton.addEventListener('click', () => {
           showConfirm('Are you sure you want to delete this reminder?', (confirmed) => {
             if (confirmed) {
-              chrome.runtime.sendMessage({type: 'delete-reminder', index: index});
-              renderReminders();
+              db.collection('users').doc(currentUser.uid).collection('reminders').doc(doc.id).delete().then(renderReminders);
             }
           });
         });
@@ -412,24 +468,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   addWebsiteButton.addEventListener('click', () => {
     const website = websiteInput.value;
-    if (website) {
-      chrome.storage.sync.get({blockedWebsites: []}, (data) => {
-        const blockedWebsites = data.blockedWebsites;
-        blockedWebsites.push(website);
-        chrome.storage.sync.set({blockedWebsites: blockedWebsites}, () => {
-          websiteInput.value = '';
-          renderBlockedWebsites();
-        });
+    if (website && db && currentUser) {
+      db.collection('users').doc(currentUser.uid).collection('blockedWebsites').add({
+        url: website,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        websiteInput.value = '';
+        renderBlockedWebsites();
       });
     }
   });
 
   function renderBlockedWebsites() {
-    chrome.storage.sync.get({blockedWebsites: []}, (data) => {
+    if (!db || !currentUser) return;
+    db.collection('users').doc(currentUser.uid).collection('blockedWebsites').orderBy('createdAt', 'desc').get().then((snapshot) => {
       websiteList.innerHTML = '';
-      data.blockedWebsites.forEach((website, index) => {
+      snapshot.forEach(doc => {
+        const website = doc.data();
         const websiteElement = document.createElement('li');
-        websiteElement.textContent = website;
+        websiteElement.textContent = website.url;
         
         const deleteButton = document.createElement('button');
         deleteButton.textContent = 'X';
@@ -437,8 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteButton.addEventListener('click', () => {
           showConfirm('Are you sure you want to remove this website?', (confirmed) => {
             if (confirmed) {
-              data.blockedWebsites.splice(index, 1);
-              chrome.storage.sync.set({blockedWebsites: data.blockedWebsites}, renderBlockedWebsites);
+              db.collection('users').doc(currentUser.uid).collection('blockedWebsites').doc(doc.id).delete().then(renderBlockedWebsites);
             }
           });
         });
@@ -494,10 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  renderNotes();
-  renderTasks();
-  renderReminders();
-  renderBlockedWebsites();
   updateFocusTimer();
   setInterval(updateFocusTimer, 1000);
 });
