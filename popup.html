@@ -6,72 +6,81 @@
   <link rel="stylesheet" type="text/css" href="vendor/quill.snow.css">
 </head>
 <body>
-  <div class="container">
-    <h1>ClarityTap</h1>
-    <div class="tabs">
-      <button class="tab-button active" data-tab="notes">Notes</button>
-      <button class="tab-button" data-tab="tasks">Tasks</button>
-      <button class="tab-button" data-tab="reminders">Reminders</button>
-      <button class="tab-button" data-tab="focus-mode">Focus Mode</button>
+  <div id="auth-container">
+    <button id="login-button">Sign in with Google</button>
+  </div>
+  <div id="main-container" style="display: none;">
+    <div id="user-profile">
+      <p id="user-name"></p>
+      <button id="logout-button">Sign out</button>
     </div>
-    <div id="notes" class="tab-content active">
-      <div id="editor"></div>
-      <button id="save-note">Save Note</button>
-      <div id="notes-list"></div>
-    </div>
-    <div id="tasks" class="tab-content">
-      <input type="text" id="task-input" placeholder="Add a new task...">
-      <button id="add-task">Add Task</button>
-      <ul id="task-list"></ul>
-    </div>
-    <div id="reminders" class="tab-content">
-      <input type="text" id="reminder-input" placeholder="Reminder title...">
-      <input type="datetime-local" id="reminder-time">
-      <select id="recurrence-unit">
-        <option value="none">Does not repeat</option>
-        <option value="daily">Daily</option>
-        <option value="weekly">Weekly</option>
-        <option value="monthly">Monthly</option>
-        <option value="custom">Custom</option>
-      </select>
-      <div id="custom-recurrence" style="display: none;">
-        <div id="weekly-recurrence">
-          <label>Repeat on:</label>
-          <div class="weekday-selector">
-            <input type="checkbox" id="weekday-sun" value="0"><label for="weekday-sun">S</label>
-            <input type="checkbox" id="weekday-mon" value="1"><label for="weekday-mon">M</label>
-            <input type="checkbox" id="weekday-tue" value="2"><label for="weekday-tue">T</label>
-            <input type="checkbox" id="weekday-wed" value="3"><label for="weekday-wed">W</label>
-            <input type="checkbox" id="weekday-thu" value="4"><label for="weekday-thu">T</label>
-            <input type="checkbox" id="weekday-fri" value="5"><label for="weekday-fri">F</label>
-            <input type="checkbox" id="weekday-sat" value="6"><label for="weekday-sat">S</label>
-          </div>
-        </div>
-        <div id="monthly-recurrence" style="display: none;">
-          <label for="day-of-month">Day of month:</label>
-          <input type="number" id="day-of-month" min="1" max="31">
-        </div>
-        <label for="recurrence-end">End date:</label>
-        <input type="date" id="recurrence-end">
+    <div class="container">
+      <h1>ClarityTap</h1>
+      <div class="tabs">
+        <button class="tab-button active" data-tab="notes">Notes</button>
+        <button class="tab-button" data-tab="tasks">Tasks</button>
+        <button class="tab-button" data-tab="reminders">Reminders</button>
+        <button class="tab-button" data-tab="focus-mode">Focus Mode</button>
       </div>
-      <button id="set-reminder">Set Reminder</button>
-      <ul id="reminder-list"></ul>
-    </div>
-    <div id="focus-mode" class="tab-content">
-      <h3>Block Websites</h3>
-      <input type="text" id="website-input" placeholder="Enter a website to block...">
-      <button id="add-website">Add Website</button>
-      <ul id="website-list"></ul>
-      <h3>Focus Session</h3>
-      <input type="number" id="focus-duration" placeholder="Enter duration in minutes...">
-      <button id="start-focus">Start Focus</button>
-      <button id="stop-focus">Stop Focus</button>
-      <div id="focus-timer">
-        <svg id="timer-svg" width="120" height="120" viewBox="0 0 120 120">
-          <circle id="timer-background" cx="60" cy="60" r="54" fill="none" stroke="#e6e6e6" stroke-width="12"/>
-          <circle id="timer-progress" cx="60" cy="60" r="54" fill="none" stroke="#65dfc9" stroke-width="12" stroke-dasharray="339.292" stroke-dashoffset="339.292" transform="rotate(-90 60 60)"/>
-          <text id="timer-text" x="60" y="60" text-anchor="middle" dy=".3em" font-size="20">00:00</text>
-        </svg>
+      <div id="notes" class="tab-content active">
+        <div id="editor"></div>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list"></div>
+      </div>
+      <div id="tasks" class="tab-content">
+        <input type="text" id="task-input" placeholder="Add a new task...">
+        <button id="add-task">Add Task</button>
+        <ul id="task-list"></ul>
+      </div>
+      <div id="reminders" class="tab-content">
+        <input type="text" id="reminder-input" placeholder="Reminder title...">
+        <input type="datetime-local" id="reminder-time">
+        <select id="recurrence-unit">
+          <option value="none">Does not repeat</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="custom">Custom</option>
+        </select>
+        <div id="custom-recurrence" style="display: none;">
+          <div id="weekly-recurrence">
+            <label>Repeat on:</label>
+            <div class="weekday-selector">
+              <input type="checkbox" id="weekday-sun" value="0"><label for="weekday-sun">S</label>
+              <input type="checkbox" id="weekday-mon" value="1"><label for="weekday-mon">M</label>
+              <input type="checkbox" id="weekday-tue" value="2"><label for="weekday-tue">T</label>
+              <input type="checkbox" id="weekday-wed" value="3"><label for="weekday-wed">W</label>
+              <input type="checkbox" id="weekday-thu" value="4"><label for="weekday-thu">T</label>
+              <input type="checkbox" id="weekday-fri" value="5"><label for="weekday-fri">F</label>
+              <input type="checkbox" id="weekday-sat" value="6"><label for="weekday-sat">S</label>
+            </div>
+          </div>
+          <div id="monthly-recurrence" style="display: none;">
+            <label for="day-of-month">Day of month:</label>
+            <input type="number" id="day-of-month" min="1" max="31">
+          </div>
+          <label for="recurrence-end">End date:</label>
+          <input type="date" id="recurrence-end">
+        </div>
+        <button id="set-reminder">Set Reminder</button>
+        <ul id="reminder-list"></ul>
+      </div>
+      <div id="focus-mode" class="tab-content">
+        <h3>Block Websites</h3>
+        <input type="text" id="website-input" placeholder="Enter a website to block...">
+        <button id="add-website">Add Website</button>
+        <ul id="website-list"></ul>
+        <h3>Focus Session</h3>
+        <input type="number" id="focus-duration" placeholder="Enter duration in minutes...">
+        <button id="start-focus">Start Focus</button>
+        <button id="stop-focus">Stop Focus</button>
+        <div id="focus-timer">
+          <svg id="timer-svg" width="120" height="120" viewBox="0 0 120 120">
+            <circle id="timer-background" cx="60" cy="60" r="54" fill="none" stroke="#e6e6e6" stroke-width="12"/>
+            <circle id="timer-progress" cx="60" cy="60" r="54" fill="none" stroke="#65dfc9" stroke-width="12" stroke-dasharray="339.292" stroke-dashoffset="339.292" transform="rotate(-90 60 60)"/>
+            <text id="timer-text" x="60" y="60" text-anchor="middle" dy=".3em" font-size="20">00:00</text>
+          </svg>
+        </div>
       </div>
     </div>
   </div>
@@ -89,11 +98,15 @@
       <p id="confirm-message"></p>
       <div class="confirm-actions">
         <button id="confirm-yes-button">Confirm</button>
-        <button id="confirm-no-button">Cancel</button>
+        <button id="confirm-no-button">Cancel</.button>
       </div>
     </div>
   </div>
   <script src="vendor/quill.js"></script>
+  <script src="firebase-app-compat.js"></script>
+  <script src="firebase-auth-compat.js"></script>
+  <script src="firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

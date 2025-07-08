@@ -1,3 +1,72 @@
+importScripts('firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js', 'firebase.js');
+
+let user = null;
+
+function performLogin(sendResponse) {
+  chrome.identity.getAuthToken({ interactive: true }, (token) => {
+    if (chrome.runtime.lastError || !token) {
+      console.error('getAuthToken failed:', chrome.runtime.lastError);
+      sendResponse({ success: false, error: chrome.runtime.lastError.message });
+      return;
+    }
+    
+    const credential = firebase.auth.GoogleAuthProvider.credential(null, token);
+    firebase.auth().signInWithCredential(credential)
+      .then(result => {
+        sendResponse({ success: true, user: result.user });
+      })
+      .catch(error => {
+        console.error('signInWithCredential failed:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+  });
+}
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === 'login') {
+    if (user) {
+      console.log('User already logged in');
+      sendResponse({ success: true, user });
+      return true;
+    }
+
+    // First, try to get a token silently. If it exists, it might be stale.
+    chrome.identity.getAuthToken({ interactive: false }, (cachedToken) => {
+      if (!chrome.runtime.lastError && cachedToken) {
+        // If we have a cached token, remove it before the interactive login.
+        chrome.identity.removeCachedAuthToken({ token: cachedToken }, () => {
+          console.log('Cached token removed. Attempting fresh login.');
+          performLogin(sendResponse);
+        });
+      } else {
+        // No cached token, or an error occurred, so just proceed with interactive login.
+        performLogin(sendResponse);
+      }
+    });
+    
+    return true; // Indicates that the response is sent asynchronously
+  } else if (request.type === 'get-user-status') {
+    sendResponse({ user });
+    return;
+  }
+  // Keep other message listeners if they exist and are needed
+});
+
+firebase.auth().onAuthStateChanged((firebaseUser) => {
+  if (firebaseUser) {
+    user = {
+      uid: firebaseUser.uid,
+      displayName: firebaseUser.displayName,
+      email: firebaseUser.email,
+    };
+    console.log('User signed in:', user);
+  } else {
+    user = null;
+    console.log('User signed out');
+  }
+});
+
+// ... (rest of your background.js, e.g., alarm listeners)
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   const { reminders } = await chrome.storage.sync.get(['reminders']);
   const reminder = reminders.find(r => r.text === alarm.name);
