@@ -161,28 +161,34 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     const duration = request.duration;
     const endTime = Date.now() + duration * 60 * 1000;
     chrome.storage.local.set({ focusModeUntil: endTime }, () => {
-      updateBlockingRules();
+      updateBlockingRules(); // Will fetch websites from storage
     });
   } else if (request.type === 'stop-focus-mode') {
     chrome.storage.local.remove('focusModeUntil', () => {
-      updateBlockingRules();
+      updateBlockingRules(); // Will clear rules
     });
+  } else if (request.type === 'update-blocking') {
+    updateBlockingRules(request.websites);
   }
 });
 
-async function updateBlockingRules() {
-  const { blockedWebsites } = await chrome.storage.local.get(['blockedWebsites']);
+async function updateBlockingRules(websites) {
   const { focusModeUntil } = await chrome.storage.local.get(['focusModeUntil']);
-
   const isFocusModeActive = focusModeUntil && focusModeUntil > Date.now();
 
-  if (isFocusModeActive && blockedWebsites && blockedWebsites.length > 0) {
+  // If websites aren't passed, get them from storage.
+  if (!websites) {
+    const data = await chrome.storage.local.get({ blockedWebsites: [] });
+    websites = data.blockedWebsites.map(site => site.url);
+  }
+
+  if (isFocusModeActive && websites && websites.length > 0) {
     const rules = [{
       id: 1,
       priority: 1,
       action: { type: 'block' },
       condition: {
-        requestDomains: blockedWebsites,
+        requestDomains: websites,
         resourceTypes: ['main_frame']
       }
     }];
@@ -190,10 +196,12 @@ async function updateBlockingRules() {
       removeRuleIds: [1],
       addRules: rules
     });
+    console.log("Blocking rules updated for:", websites);
   } else {
     await chrome.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: [1]
     });
+    console.log("Blocking rules cleared.");
   }
 }
 

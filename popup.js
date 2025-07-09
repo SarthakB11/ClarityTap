@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Core UI elements
   const mainContainer = document.getElementById('main-container');
   const loginButton = document.getElementById('login-button');
   const logoutButton = document.getElementById('logout-button');
@@ -8,8 +9,45 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabs = document.querySelectorAll('.tab-button');
   const contents = document.querySelectorAll('.tab-content');
 
+  // Notes elements
+  const saveNoteButton = document.getElementById('save-note');
+  const notesList = document.getElementById('notes-list');
+  
+  // Tasks elements
+  const taskInput = document.getElementById('task-input');
+  const addTaskButton = document.getElementById('add-task');
+  const taskList = document.getElementById('task-list');
+
+  // Reminders elements
+  const reminderInput = document.getElementById('reminder-input');
+  const reminderTime = document.getElementById('reminder-time');
+  const recurrenceUnit = document.getElementById('recurrence-unit');
+  const customRecurrence = document.getElementById('custom-recurrence');
+  const weeklyRecurrence = document.getElementById('weekly-recurrence');
+  const monthlyRecurrence = document.getElementById('monthly-recurrence');
+  const setReminderButton = document.getElementById('set-reminder');
+  const reminderList = document.getElementById('reminder-list');
+
+  // Focus Mode elements
+  const websiteInput = document.getElementById('website-input');
+  const addWebsiteButton = document.getElementById('add-website');
+  const websiteList = document.getElementById('website-list');
+  const focusDurationInput = document.getElementById('focus-duration');
+  const startFocusButton = document.getElementById('start-focus');
+  const stopFocusButton = document.getElementById('stop-focus');
+  const timerSVG = document.getElementById('timer-svg');
+  const timerProgress = document.getElementById('timer-progress');
+  const timerText = document.getElementById('timer-text');
+  
+  // Modal elements
+  const customConfirmModal = document.getElementById('custom-confirm-modal');
+  const confirmMessage = document.getElementById('confirm-message');
+  const confirmYesButton = document.getElementById('confirm-yes-button');
+  const confirmNoButton = document.getElementById('confirm-no-button');
+
   let db;
   let currentUser = null;
+  let modalQuill;
 
   // Initial UI setup
   mainContainer.style.display = 'block';
@@ -17,7 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderTasks();
   renderReminders();
   renderBlockedWebsites();
-
+  updateFocusTimer();
+  setInterval(updateFocusTimer, 1000);
+  
   // Ask the background script for the current user status when the popup opens
   chrome.runtime.sendMessage({ type: 'get-user-status' }, (response) => {
     if (response && response.user) {
@@ -79,7 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   logoutButton.addEventListener('click', () => {
-    firebase.auth().signOut();
+    console.log("Logout button clicked.");
+    firebase.auth().signOut().then(() => {
+      console.log("Sign-out successful.");
+      updateUIForGuest();
+    }).catch(error => {
+      console.error("Error signing out:", error);
+    });
   });
 
   tabs.forEach(tab => {
@@ -102,14 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  let modalQuill;
-
-  // Custom Confirm Modal
-  const customConfirmModal = document.getElementById('custom-confirm-modal');
-  const confirmMessage = document.getElementById('confirm-message');
-  const confirmYesButton = document.getElementById('confirm-yes-button');
-  const confirmNoButton = document.getElementById('confirm-no-button');
-
   function showConfirm(message, callback) {
     confirmMessage.textContent = message;
     customConfirmModal.style.display = 'flex';
@@ -126,14 +164,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Notes
-  const saveNoteButton = document.getElementById('save-note');
-  const notesList = document.getElementById('notes-list');
-
   saveNoteButton.addEventListener('click', () => {
     showConfirm('Are you sure you want to save this note?', (confirmed) => {
       if (confirmed) {
         const noteContent = mainQuill.root.innerHTML;
-        if (noteContent && db && currentUser) {
+        if (!noteContent.trim() || noteContent === '<p><br></p>') return;
+
+        if (currentUser && db) {
           db.collection('users').doc(currentUser.uid).collection('notes').add({
             content: noteContent,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -142,52 +179,79 @@ document.addEventListener('DOMContentLoaded', () => {
             mainQuill.root.innerHTML = '';
             renderNotes();
           }).catch(error => console.error("Error saving note to Firestore:", error));
+        } else {
+          chrome.storage.local.get({ notes: [] }, (data) => {
+            const notes = data.notes;
+            notes.push({ id: `local-${Date.now()}`, content: noteContent });
+            chrome.storage.local.set({ notes: notes }, () => {
+              console.log("Note saved to local storage.");
+              mainQuill.root.innerHTML = '';
+              renderNotes();
+            });
+          });
         }
       }
     });
   });
 
   function renderNotes() {
-    if (!db || !currentUser) return;
-    db.collection('users').doc(currentUser.uid).collection('notes').orderBy('createdAt', 'desc').get().then((snapshot) => {
-      console.log("Successfully retrieved notes from Firestore.");
-      notesList.innerHTML = '';
-      snapshot.forEach(doc => {
-        const note = doc.data();
-        console.log("  - Note data:", note);
-        const noteContainer = document.createElement('div');
-        noteContainer.classList.add('note-container');
-        
-        const noteElement = document.createElement('div');
-        noteElement.innerHTML = note.content;
-        
-        const actionsContainer = document.createElement('div');
-        actionsContainer.classList.add('note-actions');
-        
-        const displayIcon = document.createElement('img');
-        displayIcon.src = 'images/icons/eye.svg';
-        displayIcon.classList.add('note-action');
-        displayIcon.addEventListener('click', () => openNoteModal(note.content, doc.id));
-        
-        const editIcon = document.createElement('img');
-        editIcon.src = 'images/icons/pencil.svg';
-        editIcon.classList.add('note-action');
-        editIcon.addEventListener('click', () => editNote(doc.id, note.content));
-        
-        const deleteIcon = document.createElement('img');
-        deleteIcon.src = 'images/icons/trash.svg';
-        deleteIcon.classList.add('note-action');
-        deleteIcon.addEventListener('click', () => deleteNote(doc.id));
-        
-        actionsContainer.appendChild(displayIcon);
-        actionsContainer.appendChild(editIcon);
-        actionsContainer.appendChild(deleteIcon);
-        
-        noteContainer.appendChild(noteElement);
-        noteContainer.appendChild(actionsContainer);
-        notesList.appendChild(noteContainer);
+    notesList.innerHTML = '';
+    if (currentUser && db) {
+      db.collection('users').doc(currentUser.uid).collection('notes').orderBy('createdAt', 'desc').get().then((snapshot) => {
+        console.log("Successfully retrieved notes from Firestore.");
+        if (snapshot.empty) {
+            notesList.innerHTML = '<p class="empty-message">No notes yet. Add one above!</p>';
+        }
+        snapshot.forEach(doc => {
+          const note = doc.data();
+          displayNote(note.content, doc.id);
+        });
+      }).catch(error => console.error("Error getting notes from Firestore:", error));
+    } else {
+      chrome.storage.local.get({ notes: [] }, (data) => {
+        console.log("Successfully retrieved notes from local storage.");
+        if (!data.notes || data.notes.length === 0) {
+            notesList.innerHTML = '<p class="empty-message">No notes yet. Add one above!</p>';
+        }
+        data.notes.forEach(note => {
+          displayNote(note.content, note.id);
+        });
       });
-    }).catch(error => console.error("Error getting notes from Firestore:", error));
+    }
+  }
+
+  function displayNote(content, id) {
+      const noteContainer = document.createElement('div');
+      noteContainer.classList.add('note-container');
+      
+      const noteElement = document.createElement('div');
+      noteElement.innerHTML = content;
+      
+      const actionsContainer = document.createElement('div');
+      actionsContainer.classList.add('note-actions');
+      
+      const displayIcon = document.createElement('img');
+      displayIcon.src = 'images/icons/eye.svg';
+      displayIcon.classList.add('note-action');
+      displayIcon.addEventListener('click', () => openNoteModal(content, id));
+      
+      const editIcon = document.createElement('img');
+      editIcon.src = 'images/icons/pencil.svg';
+      editIcon.classList.add('note-action');
+      editIcon.addEventListener('click', () => editNote(id, content));
+      
+      const deleteIcon = document.createElement('img');
+      deleteIcon.src = 'images/icons/trash.svg';
+      deleteIcon.classList.add('note-action');
+      deleteIcon.addEventListener('click', () => deleteNote(id));
+      
+      actionsContainer.appendChild(displayIcon);
+      actionsContainer.appendChild(editIcon);
+      actionsContainer.appendChild(deleteIcon);
+      
+      noteContainer.appendChild(noteElement);
+      noteContainer.appendChild(actionsContainer);
+      notesList.appendChild(noteContainer);
   }
 
   function openNoteModal(noteContent, idOrIndex) {
@@ -268,9 +332,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }).catch(error => console.error("Error updating note in Firestore:", error));
           } else {
             chrome.storage.local.get({notes: []}, (data) => {
-              const notes = data.notes;
-              notes[idOrIndex] = updatedContent;
+              const notes = data.notes.map(n => n.id === idOrIndex ? { ...n, content: updatedContent } : n);
               chrome.storage.local.set({notes: notes}, () => {
+                console.log("Note updated in local storage.");
                 closeNoteModal();
                 renderNotes();
               });
@@ -302,14 +366,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function deleteNote(id, isEditing = false) {
-    if (!currentUser) return;
     const performDelete = () => {
-        if (db) {
-            db.collection('users').doc(currentUser.uid).collection('notes').doc(id).delete().then(() => {
-                console.log("Successfully deleted note from Firestore.");
-                renderNotes();
-            }).catch(error => console.error("Error deleting note from Firestore:", error));
-        }
+      if (currentUser && db) {
+        db.collection('users').doc(currentUser.uid).collection('notes').doc(id).delete().then(() => {
+          console.log("Successfully deleted note from Firestore.");
+          renderNotes();
+        }).catch(error => console.error("Error deleting note from Firestore:", error));
+      } else {
+        chrome.storage.local.get({ notes: [] }, (data) => {
+          const updatedNotes = data.notes.filter(note => note.id !== id);
+          chrome.storage.local.set({ notes: updatedNotes }, () => {
+            console.log("Successfully deleted note from local storage.");
+            renderNotes();
+          });
+        });
+      }
     };
 
     if (isEditing) {
@@ -324,15 +395,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Tasks
-  const taskInput = document.getElementById('task-input');
-  const addTaskButton = document.getElementById('add-task');
-  const taskList = document.getElementById('task-list');
-
   addTaskButton.addEventListener('click', () => {
     showConfirm('Are you sure you want to add this task?', (confirmed) => {
       if (confirmed) {
         const taskText = taskInput.value;
-        if (taskText && db && currentUser) {
+        if (!taskText.trim()) return;
+
+        if (currentUser && db) {
           db.collection('users').doc(currentUser.uid).collection('tasks').add({
             text: taskText,
             completed: false,
@@ -342,92 +411,115 @@ document.addEventListener('DOMContentLoaded', () => {
             taskInput.value = '';
             renderTasks();
           }).catch(error => console.error("Error saving task to Firestore:", error));
+        } else {
+          chrome.storage.local.get({ tasks: [] }, (data) => {
+            const tasks = data.tasks;
+            tasks.push({ id: `local-${Date.now()}`, text: taskText, completed: false });
+            chrome.storage.local.set({ tasks: tasks }, () => {
+              console.log("Task saved to local storage.");
+              taskInput.value = '';
+              renderTasks();
+            });
+          });
         }
       }
     });
   });
 
   function renderTasks() {
-    if (!db || !currentUser) return;
-    db.collection('users').doc(currentUser.uid).collection('tasks').orderBy('createdAt', 'desc').get().then((snapshot) => {
-      console.log("Successfully retrieved tasks from Firestore.");
-      taskList.innerHTML = '';
-      snapshot.forEach(doc => {
-        const task = doc.data();
-        console.log("  - Task data:", task);
-        const taskElement = document.createElement('li');
-        taskElement.textContent = task.text;
-        taskElement.style.textDecoration = task.completed ? 'line-through' : 'none';
-        
-        const completeButton = document.createElement('input');
-        completeButton.type = 'checkbox';
-        completeButton.checked = task.completed;
-        completeButton.addEventListener('change', () => {
-          db.collection('users').doc(currentUser.uid).collection('tasks').doc(doc.id).update({
-            completed: completeButton.checked
-          }).then(() => {
-            console.log("Successfully updated task in Firestore.");
-            renderTasks();
-          }).catch(error => console.error("Error updating task in Firestore:", error));
+    taskList.innerHTML = '';
+    if (currentUser && db) {
+      db.collection('users').doc(currentUser.uid).collection('tasks').orderBy('createdAt', 'desc').get().then((snapshot) => {
+        console.log("Successfully retrieved tasks from Firestore.");
+        if (snapshot.empty) {
+            taskList.innerHTML = '<p class="empty-message">No tasks yet. Add one!</p>';
+        }
+        snapshot.forEach(doc => {
+          const task = doc.data();
+          displayTask(task.text, task.completed, doc.id);
         });
-
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'X';
-        deleteButton.classList.add('delete-button');
-        deleteButton.addEventListener('click', () => {
-          showConfirm('Are you sure you want to delete this task?', (confirmed) => {
-            if (confirmed) {
-              db.collection('users').doc(currentUser.uid).collection('tasks').doc(doc.id).delete().then(() => {
-                console.log("Successfully deleted task from Firestore.");
-                renderTasks();
-              }).catch(error => console.error("Error deleting task from Firestore:", error));
-            }
-          });
+      }).catch(error => console.error("Error getting tasks from Firestore:", error));
+    } else {
+      chrome.storage.local.get({ tasks: [] }, (data) => {
+        console.log("Successfully retrieved tasks from local storage.");
+        if (!data.tasks || data.tasks.length === 0) {
+            taskList.innerHTML = '<p class="empty-message">No tasks yet. Add one!</p>';
+        }
+        data.tasks.forEach(task => {
+          displayTask(task.text, task.completed, task.id);
         });
-
-        taskElement.prepend(completeButton);
-        taskElement.appendChild(deleteButton);
-        taskList.appendChild(taskElement);
       });
-    }).catch(error => console.error("Error getting tasks from Firestore:", error));
+    }
+  }
+
+  function displayTask(text, completed, id) {
+      const taskElement = document.createElement('li');
+      taskElement.textContent = text;
+      taskElement.style.textDecoration = completed ? 'line-through' : 'none';
+      
+      const completeButton = document.createElement('input');
+      completeButton.type = 'checkbox';
+      completeButton.checked = completed;
+      completeButton.addEventListener('change', () => {
+        if (currentUser && db) {
+            db.collection('users').doc(currentUser.uid).collection('tasks').doc(id).update({
+                completed: completeButton.checked
+            }).then(() => {
+                console.log("Successfully updated task in Firestore.");
+                renderTasks();
+            }).catch(error => console.error("Error updating task in Firestore:", error));
+        } else {
+            chrome.storage.local.get({ tasks: [] }, (data) => {
+                const tasks = data.tasks.map(t => t.id === id ? { ...t, completed: completeButton.checked } : t);
+                chrome.storage.local.set({ tasks: tasks }, () => {
+                    console.log("Task updated in local storage.");
+                    renderTasks();
+                });
+            });
+        }
+      });
+
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'X';
+      deleteButton.classList.add('delete-button');
+      deleteButton.addEventListener('click', () => {
+        showConfirm('Are you sure you want to delete this task?', (confirmed) => {
+          if (confirmed) {
+            if (currentUser && db) {
+                db.collection('users').doc(currentUser.uid).collection('tasks').doc(id).delete().then(() => {
+                    console.log("Successfully deleted task from Firestore.");
+                    renderTasks();
+                }).catch(error => console.error("Error deleting task from Firestore:", error));
+            } else {
+                chrome.storage.local.get({ tasks: [] }, (data) => {
+                    const updatedTasks = data.tasks.filter(t => t.id !== id);
+                    chrome.storage.local.set({ tasks: updatedTasks }, () => {
+                        console.log("Task deleted from local storage.");
+                        renderTasks();
+                    });
+                });
+            }
+          }
+        });
+      });
+
+      taskElement.prepend(completeButton);
+      taskElement.appendChild(deleteButton);
+      taskList.appendChild(taskElement);
   }
 
   // Reminders
-  const reminderInput = document.getElementById('reminder-input');
-  const reminderTime = document.getElementById('reminder-time');
-  const recurrenceUnit = document.getElementById('recurrence-unit');
-  const customRecurrence = document.getElementById('custom-recurrence');
-  const weeklyRecurrence = document.getElementById('weekly-recurrence');
-  const monthlyRecurrence = document.getElementById('monthly-recurrence');
-  const setReminderButton = document.getElementById('set-reminder');
-  const reminderList = document.getElementById('reminder-list');
-
-  recurrenceUnit.addEventListener('change', () => {
-    if (recurrenceUnit.value === 'custom') {
-      customRecurrence.style.display = 'block';
-    } else {
-      customRecurrence.style.display = 'none';
-    }
-
-    if (recurrenceUnit.value === 'weekly') {
-      weeklyRecurrence.style.display = 'block';
-      monthlyRecurrence.style.display = 'none';
-    } else if (recurrenceUnit.value === 'monthly') {
-      weeklyRecurrence.style.display = 'none';
-      monthlyRecurrence.style.display = 'block';
-    } else {
-      weeklyRecurrence.style.display = 'none';
-      monthlyRecurrence.style.display = 'none';
-    }
-  });
-
   setReminderButton.addEventListener('click', () => {
     showConfirm('Are you sure you want to set this reminder?', (confirmed) => {
       if (confirmed) {
         const reminderText = reminderInput.value;
         const reminderTimestamp = new Date(reminderTime.value).getTime();
-        const recurrence = recurrenceUnit.value;
+        if (!reminderText.trim() || !reminderTimestamp || reminderTimestamp <= Date.now()) {
+            console.error("Invalid reminder text or time.");
+            return;
+        }
         
+        const recurrence = recurrenceUnit.value;
         let recurrenceData = {
           type: recurrence,
           endDate: document.getElementById('recurrence-end').value
@@ -443,84 +535,110 @@ document.addEventListener('DOMContentLoaded', () => {
           recurrenceData.dayOfMonth = parseInt(document.getElementById('day-of-month').value);
         }
 
-        if (reminderText && reminderTimestamp > Date.now() && db && currentUser) {
-          db.collection('users').doc(currentUser.uid).collection('reminders').add({
+        const reminder = {
+            id: `local-${Date.now()}`,
             text: reminderText,
             time: reminderTimestamp,
-            recurrence: recurrenceData,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).then((docRef) => {
+            recurrence: recurrenceData
+        };
+
+        if (currentUser && db) {
+          reminder.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+          db.collection('users').doc(currentUser.uid).collection('reminders').add(reminder).then((docRef) => {
             console.log("Reminder saved to Firestore with ID:", docRef.id);
-            reminderInput.value = '';
-            reminderTime.value = '';
-            recurrenceUnit.value = 'none';
-            customRecurrence.style.display = 'none';
+            resetReminderForm();
             renderReminders();
           }).catch(error => console.error("Error saving reminder to Firestore:", error));
+        } else {
+            chrome.storage.local.get({ reminders: [] }, (data) => {
+                const reminders = data.reminders;
+                reminders.push(reminder);
+                chrome.storage.local.set({ reminders: reminders }, () => {
+                    console.log("Reminder saved to local storage.");
+                    resetReminderForm();
+                    renderReminders();
+                });
+            });
         }
       }
     });
   });
+  
+  function resetReminderForm() {
+      reminderInput.value = '';
+      reminderTime.value = '';
+      recurrenceUnit.value = 'none';
+      customRecurrence.style.display = 'none';
+  }
 
   function renderReminders() {
-    if (!db || !currentUser) return;
-    db.collection('users').doc(currentUser.uid).collection('reminders').orderBy('createdAt', 'desc').get().then((snapshot) => {
-      console.log("Successfully retrieved reminders from Firestore.");
-      reminderList.innerHTML = '';
-      snapshot.forEach(doc => {
-        const reminder = doc.data();
-        console.log("  - Reminder data:", reminder);
-        const reminderElement = document.createElement('li');
-        let recurrenceText = '';
-        if (reminder.recurrence && reminder.recurrence.type !== 'none') {
-          recurrenceText = `(Repeats ${reminder.recurrence.type})`;
+    reminderList.innerHTML = '';
+    if (currentUser && db) {
+      db.collection('users').doc(currentUser.uid).collection('reminders').orderBy('createdAt', 'desc').get().then((snapshot) => {
+        console.log("Successfully retrieved reminders from Firestore.");
+        if (snapshot.empty) {
+            reminderList.innerHTML = '<p class="empty-message">No reminders yet. Set one!</p>';
         }
-        reminderElement.textContent = `${reminder.text} - ${new Date(reminder.time).toLocaleString()} ${recurrenceText}`;
-        
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'X';
-        deleteButton.classList.add('delete-button');
-        deleteButton.addEventListener('click', () => {
-          showConfirm('Are you sure you want to delete this reminder?', (confirmed) => {
-            if (confirmed) {
-              db.collection('users').doc(currentUser.uid).collection('reminders').doc(doc.id).delete().then(() => {
-                console.log("Successfully deleted reminder from Firestore.");
-                renderReminders();
-              }).catch(error => console.error("Error deleting reminder from Firestore:", error));
-            }
-          });
+        snapshot.forEach(doc => {
+          const reminder = doc.data();
+          displayReminder(reminder, doc.id);
         });
-
-        reminderElement.appendChild(deleteButton);
-        reminderList.appendChild(reminderElement);
+      }).catch(error => console.error("Error getting reminders from Firestore:", error));
+    } else {
+      chrome.storage.local.get({ reminders: [] }, (data) => {
+        console.log("Successfully retrieved reminders from local storage.");
+        if (!data.reminders || data.reminders.length === 0) {
+            reminderList.innerHTML = '<p class="empty-message">No reminders yet. Set one!</p>';
+        }
+        data.reminders.forEach(reminder => {
+          displayReminder(reminder, reminder.id);
+        });
       });
-    }).catch(error => console.error("Error getting reminders from Firestore:", error));
+    }
+  }
+
+  function displayReminder(reminder, id) {
+      const reminderElement = document.createElement('li');
+      let recurrenceText = '';
+      if (reminder.recurrence && reminder.recurrence.type !== 'none') {
+        recurrenceText = `(Repeats ${reminder.recurrence.type})`;
+      }
+      reminderElement.textContent = `${reminder.text} - ${new Date(reminder.time).toLocaleString()} ${recurrenceText}`;
+      
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'X';
+      deleteButton.classList.add('delete-button');
+      deleteButton.addEventListener('click', () => {
+        showConfirm('Are you sure you want to delete this reminder?', (confirmed) => {
+          if (confirmed) {
+            if (currentUser && db) {
+                db.collection('users').doc(currentUser.uid).collection('reminders').doc(id).delete().then(() => {
+                    console.log("Successfully deleted reminder from Firestore.");
+                    renderReminders();
+                }).catch(error => console.error("Error deleting reminder from Firestore:", error));
+            } else {
+                chrome.storage.local.get({ reminders: [] }, (data) => {
+                    const updatedReminders = data.reminders.filter(r => r.id !== id);
+                    chrome.storage.local.set({ reminders: updatedReminders }, () => {
+                        console.log("Reminder deleted from local storage.");
+                        renderReminders();
+                    });
+                });
+            }
+          }
+        });
+      });
+
+      reminderElement.appendChild(deleteButton);
+      reminderList.appendChild(reminderElement);
   }
 
   // Focus Mode
-  const websiteInput = document.getElementById('website-input');
-  const addWebsiteButton = document.getElementById('add-website');
-  const websiteList = document.getElementById('website-list');
-  const focusDurationInput = document.getElementById('focus-duration');
-  const startFocusButton = document.getElementById('start-focus');
-  const stopFocusButton = document.getElementById('stop-focus');
-  const timerSVG = document.getElementById('timer-svg');
-  const timerProgress = document.getElementById('timer-progress');
-  const timerText = document.getElementById('timer-text');
-  const radius = timerProgress.r.baseVal.value;
-  const circumference = radius * 2 * Math.PI;
-
-  timerProgress.style.strokeDasharray = circumference;
-  timerProgress.style.strokeDashoffset = circumference;
-
-  function setProgress(percent) {
-    const offset = circumference - percent / 100 * circumference;
-    timerProgress.style.strokeDashoffset = offset;
-  }
-
   addWebsiteButton.addEventListener('click', () => {
     const website = websiteInput.value;
-    if (website && db && currentUser) {
+    if (!website.trim()) return;
+
+    if (currentUser && db) {
       db.collection('users').doc(currentUser.uid).collection('blockedWebsites').add({
         url: website,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -529,38 +647,89 @@ document.addEventListener('DOMContentLoaded', () => {
         websiteInput.value = '';
         renderBlockedWebsites();
       }).catch(error => console.error("Error saving blocked website to Firestore:", error));
+    } else {
+        chrome.storage.local.get({ blockedWebsites: [] }, (data) => {
+            const blockedWebsites = data.blockedWebsites;
+            blockedWebsites.push({ id: `local-${Date.now()}`, url: website });
+            chrome.storage.local.set({ blockedWebsites: blockedWebsites }, () => {
+                console.log("Blocked website saved to local storage.");
+                websiteInput.value = '';
+                renderBlockedWebsites();
+            });
+        });
     }
   });
 
   function renderBlockedWebsites() {
-    if (!db || !currentUser) return;
-    db.collection('users').doc(currentUser.uid).collection('blockedWebsites').orderBy('createdAt', 'desc').get().then((snapshot) => {
-      console.log("Successfully retrieved blocked websites from Firestore.");
-      websiteList.innerHTML = '';
-      snapshot.forEach(doc => {
-        const website = doc.data();
-        console.log("  - Blocked website data:", website);
-        const websiteElement = document.createElement('li');
-        websiteElement.textContent = website.url;
-        
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'X';
-        deleteButton.classList.add('delete-button');
-        deleteButton.addEventListener('click', () => {
-          showConfirm('Are you sure you want to remove this website?', (confirmed) => {
-            if (confirmed) {
-              db.collection('users').doc(currentUser.uid).collection('blockedWebsites').doc(doc.id).delete().then(() => {
-                console.log("Successfully deleted blocked website from Firestore.");
-                renderBlockedWebsites();
-              }).catch(error => console.error("Error deleting blocked website from Firestore:", error));
-            }
-          });
+    websiteList.innerHTML = '';
+    if (currentUser && db) {
+      db.collection('users').doc(currentUser.uid).collection('blockedWebsites').orderBy('createdAt', 'desc').get().then((snapshot) => {
+        console.log("Successfully retrieved blocked websites from Firestore.");
+        if (snapshot.empty) {
+            websiteList.innerHTML = '<p class="empty-message">No websites blocked.</p>';
+        }
+        const websites = [];
+        snapshot.forEach(doc => {
+          const website = doc.data();
+          websites.push(website.url);
+          displayBlockedWebsite(website.url, doc.id);
         });
+        // Also update declarativeNetRequest rules
+        updateBlockingRules(websites);
+      }).catch(error => console.error("Error getting blocked websites from Firestore:", error));
+    } else {
+        chrome.storage.local.get({ blockedWebsites: [] }, (data) => {
+            console.log("Successfully retrieved blocked websites from local storage.");
+            if (!data.blockedWebsites || data.blockedWebsites.length === 0) {
+                websiteList.innerHTML = '<p class="empty-message">No websites blocked.</p>';
+            }
+            const websites = data.blockedWebsites.map(w => w.url);
+            data.blockedWebsites.forEach(website => {
+                displayBlockedWebsite(website.url, website.id);
+            });
+            // Also update declarativeNetRequest rules
+            updateBlockingRules(websites);
+        });
+    }
+  }
 
-        websiteElement.appendChild(deleteButton);
-        websiteList.appendChild(websiteElement);
+  function displayBlockedWebsite(url, id) {
+      const websiteElement = document.createElement('li');
+      websiteElement.textContent = url;
+      
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'X';
+      deleteButton.classList.add('delete-button');
+      deleteButton.addEventListener('click', () => {
+        showConfirm('Are you sure you want to remove this website?', (confirmed) => {
+          if (confirmed) {
+            if (currentUser && db) {
+                db.collection('users').doc(currentUser.uid).collection('blockedWebsites').doc(id).delete().then(() => {
+                    console.log("Successfully deleted blocked website from Firestore.");
+                    renderBlockedWebsites();
+                }).catch(error => console.error("Error deleting blocked website from Firestore:", error));
+            } else {
+                chrome.storage.local.get({ blockedWebsites: [] }, (data) => {
+                    const updatedWebsites = data.blockedWebsites.filter(w => w.id !== id);
+                    chrome.storage.local.set({ blockedWebsites: updatedWebsites }, () => {
+                        console.log("Blocked website deleted from local storage.");
+                        renderBlockedWebsites();
+                    });
+                });
+            }
+          }
+        });
       });
-    }).catch(error => console.error("Error getting blocked websites from Firestore:", error));
+
+      websiteElement.appendChild(deleteButton);
+      websiteList.appendChild(websiteElement);
+  }
+  
+  function updateBlockingRules(websites) {
+      chrome.runtime.sendMessage({
+          type: 'update-blocking',
+          websites: websites
+      });
   }
 
   startFocusButton.addEventListener('click', () => {
@@ -609,7 +778,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+  
+  const radius = timerProgress.r.baseVal.value;
+  const circumference = radius * 2 * Math.PI;
 
-  updateFocusTimer();
-  setInterval(updateFocusTimer, 1000);
+  timerProgress.style.strokeDasharray = circumference;
+  timerProgress.style.strokeDashoffset = circumference;
+
+  function setProgress(percent) {
+    const offset = circumference - percent / 100 * circumference;
+    timerProgress.style.strokeDashoffset = offset;
+  }
 });

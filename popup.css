@@ -364,7 +364,7 @@ ul::-webkit-scrollbar-thumb:hover {
   padding: 5px 0;
   position: absolute;
   z-index: 1;
-  bottom: 125%;
+  top: 125%; /* Position below the icon */
   left: 50%;
   margin-left: -80px;
   opacity: 0;
@@ -374,12 +374,12 @@ ul::-webkit-scrollbar-thumb:hover {
 .tooltip .tooltiptext::after {
   content: "";
   position: absolute;
-  top: 100%;
+  bottom: 100%; /* Arrow at the top */
   left: 50%;
   margin-left: -5px;
   border-width: 5px;
   border-style: solid;
-  border-color: #555 transparent transparent transparent;
+  border-color: transparent transparent #555 transparent;
 }
 
 .tooltip:hover .tooltiptext {
@@ -391,6 +391,13 @@ ul::-webkit-scrollbar-thumb:hover {
   width: auto;
   padding: 8px 12px;
   font-size: 0.9em;
+}
+
+.empty-message {
+  color: #fff;
+  text-align: center;
+  padding: 20px;
+  opacity: 0.8;
 }
 
 
