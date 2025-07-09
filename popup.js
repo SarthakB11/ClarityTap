@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function updateUIForUser(user) {
+    console.log("Updating UI for logged-in user:", user.uid);
     currentUser = user;
     authContainer.style.display = 'none';
     mainContainer.style.display = 'block';
@@ -35,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateUIForGuest() {
+    console.log("Updating UI for guest user.");
     currentUser = null;
     authContainer.style.display = 'block';
     mainContainer.style.display = 'none';
@@ -43,16 +45,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   firebase.auth().onAuthStateChanged((user) => {
     if (user) {
+      console.log("onAuthStateChanged: User is logged in.", user.uid);
       updateUIForUser(user);
     } else {
+      console.log("onAuthStateChanged: User is logged out.");
       updateUIForGuest();
     }
   });
 
   loginButton.addEventListener('click', () => {
+    console.log("Login button clicked.");
     chrome.runtime.sendMessage({ type: 'login' }, (response) => {
       if (response && response.user) {
+        console.log("Login successful, updating UI.");
         updateUIForUser(response.user);
+      } else {
+        console.error("Login failed or no user data received.");
       }
     });
   });
@@ -116,10 +124,11 @@ document.addEventListener('DOMContentLoaded', () => {
           db.collection('users').doc(currentUser.uid).collection('notes').add({
             content: noteContent,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).then(() => {
+          }).then((docRef) => {
+            console.log("Note saved to Firestore with ID:", docRef.id);
             mainQuill.root.innerHTML = '';
             renderNotes();
-          });
+          }).catch(error => console.error("Error saving note to Firestore:", error));
         }
       }
     });
@@ -128,9 +137,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderNotes() {
     if (!db || !currentUser) return;
     db.collection('users').doc(currentUser.uid).collection('notes').orderBy('createdAt', 'desc').get().then((snapshot) => {
+      console.log("Successfully retrieved notes from Firestore.");
       notesList.innerHTML = '';
       snapshot.forEach(doc => {
         const note = doc.data();
+        console.log("  - Note data:", note);
         const noteContainer = document.createElement('div');
         noteContainer.classList.add('note-container');
         
@@ -163,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         noteContainer.appendChild(actionsContainer);
         notesList.appendChild(noteContainer);
       });
-    });
+    }).catch(error => console.error("Error getting notes from Firestore:", error));
   }
 
   function openNoteModal(noteContent, idOrIndex) {
@@ -238,9 +249,10 @@ document.addEventListener('DOMContentLoaded', () => {
             db.collection('users').doc(currentUser.uid).collection('notes').doc(idOrIndex).update({
               content: updatedContent
             }).then(() => {
+              console.log("Successfully updated note in Firestore.");
               closeNoteModal();
               renderNotes();
-            });
+            }).catch(error => console.error("Error updating note in Firestore:", error));
           } else {
             chrome.storage.local.get({notes: []}, (data) => {
               const notes = data.notes;
@@ -249,56 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeNoteModal();
                 renderNotes();
               });
-            });
-          }
-        }
-      });
-    };
-  }
-
-  function closeNoteModal() {
-    const modal = document.getElementById('note-modal');
-    modal.style.display = 'none';
-  }
-
-  document.getElementById('note-modal').addEventListener('click', (e) => {
-    if (e.target.id === 'note-modal') {
-      closeNoteModal();
-    }
-  });
-
-  function editNoteInModal(id, noteContent) {
-    const modalNoteContent = document.getElementById('modal-note-content');
-    const modalEditorContainer = document.getElementById('modal-editor-container');
-    const modalSaveButton = document.getElementById('modal-save-button');
-
-    modalNoteContent.style.display = 'none';
-    modalEditorContainer.style.display = 'block';
-
-    if (!modalQuill) {
-      modalQuill = new Quill('#modal-editor', {
-        theme: 'snow',
-        modules: {
-          toolbar: [
-            [{ 'header': [1, 2, false] }],
-            ['bold', 'italic', 'underline'],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }]
-          ]
-        }
-      });
-    }
-    modalQuill.root.innerHTML = noteContent;
-
-    modalSaveButton.onclick = () => {
-      showConfirm('Are you sure you want to save the changes?', (confirmed) => {
-        if (confirmed) {
-          const updatedContent = modalQuill.root.innerHTML;
-          if (db && currentUser) {
-            db.collection('users').doc(currentUser.uid).collection('notes').doc(id).update({
-              content: updatedContent
-            }).then(() => {
-              closeNoteModal();
-              renderNotes();
             });
           }
         }
@@ -328,18 +290,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function deleteNote(id, isEditing = false) {
     if (!currentUser) return;
+    const performDelete = () => {
+        if (db) {
+            db.collection('users').doc(currentUser.uid).collection('notes').doc(id).delete().then(() => {
+                console.log("Successfully deleted note from Firestore.");
+                renderNotes();
+            }).catch(error => console.error("Error deleting note from Firestore:", error));
+        }
+    };
+
     if (isEditing) {
-      if (db) {
-        db.collection('users').doc(currentUser.uid).collection('notes').doc(id).delete().then(() => {
-          renderNotes();
-        });
-      }
+      performDelete();
     } else {
       showConfirm('Are you sure you want to delete this note?', (confirmed) => {
-        if (confirmed && db) {
-          db.collection('users').doc(currentUser.uid).collection('notes').doc(id).delete().then(() => {
-            renderNotes();
-          });
+        if (confirmed) {
+          performDelete();
         }
       });
     }
@@ -359,10 +324,11 @@ document.addEventListener('DOMContentLoaded', () => {
             text: taskText,
             completed: false,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).then(() => {
+          }).then((docRef) => {
+            console.log("Task saved to Firestore with ID:", docRef.id);
             taskInput.value = '';
             renderTasks();
-          });
+          }).catch(error => console.error("Error saving task to Firestore:", error));
         }
       }
     });
@@ -371,9 +337,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderTasks() {
     if (!db || !currentUser) return;
     db.collection('users').doc(currentUser.uid).collection('tasks').orderBy('createdAt', 'desc').get().then((snapshot) => {
+      console.log("Successfully retrieved tasks from Firestore.");
       taskList.innerHTML = '';
       snapshot.forEach(doc => {
         const task = doc.data();
+        console.log("  - Task data:", task);
         const taskElement = document.createElement('li');
         taskElement.textContent = task.text;
         taskElement.style.textDecoration = task.completed ? 'line-through' : 'none';
@@ -384,7 +352,10 @@ document.addEventListener('DOMContentLoaded', () => {
         completeButton.addEventListener('change', () => {
           db.collection('users').doc(currentUser.uid).collection('tasks').doc(doc.id).update({
             completed: completeButton.checked
-          }).then(renderTasks);
+          }).then(() => {
+            console.log("Successfully updated task in Firestore.");
+            renderTasks();
+          }).catch(error => console.error("Error updating task in Firestore:", error));
         });
 
         const deleteButton = document.createElement('button');
@@ -393,7 +364,10 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteButton.addEventListener('click', () => {
           showConfirm('Are you sure you want to delete this task?', (confirmed) => {
             if (confirmed) {
-              db.collection('users').doc(currentUser.uid).collection('tasks').doc(doc.id).delete().then(renderTasks);
+              db.collection('users').doc(currentUser.uid).collection('tasks').doc(doc.id).delete().then(() => {
+                console.log("Successfully deleted task from Firestore.");
+                renderTasks();
+              }).catch(error => console.error("Error deleting task from Firestore:", error));
             }
           });
         });
@@ -402,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         taskElement.appendChild(deleteButton);
         taskList.appendChild(taskElement);
       });
-    });
+    }).catch(error => console.error("Error getting tasks from Firestore:", error));
   }
 
   // Reminders
@@ -462,13 +436,14 @@ document.addEventListener('DOMContentLoaded', () => {
             time: reminderTimestamp,
             recurrence: recurrenceData,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          }).then(() => {
+          }).then((docRef) => {
+            console.log("Reminder saved to Firestore with ID:", docRef.id);
             reminderInput.value = '';
             reminderTime.value = '';
             recurrenceUnit.value = 'none';
             customRecurrence.style.display = 'none';
             renderReminders();
-          });
+          }).catch(error => console.error("Error saving reminder to Firestore:", error));
         }
       }
     });
@@ -477,9 +452,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderReminders() {
     if (!db || !currentUser) return;
     db.collection('users').doc(currentUser.uid).collection('reminders').orderBy('createdAt', 'desc').get().then((snapshot) => {
+      console.log("Successfully retrieved reminders from Firestore.");
       reminderList.innerHTML = '';
       snapshot.forEach(doc => {
         const reminder = doc.data();
+        console.log("  - Reminder data:", reminder);
         const reminderElement = document.createElement('li');
         let recurrenceText = '';
         if (reminder.recurrence && reminder.recurrence.type !== 'none') {
@@ -493,7 +470,10 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteButton.addEventListener('click', () => {
           showConfirm('Are you sure you want to delete this reminder?', (confirmed) => {
             if (confirmed) {
-              db.collection('users').doc(currentUser.uid).collection('reminders').doc(doc.id).delete().then(renderReminders);
+              db.collection('users').doc(currentUser.uid).collection('reminders').doc(doc.id).delete().then(() => {
+                console.log("Successfully deleted reminder from Firestore.");
+                renderReminders();
+              }).catch(error => console.error("Error deleting reminder from Firestore:", error));
             }
           });
         });
@@ -501,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reminderElement.appendChild(deleteButton);
         reminderList.appendChild(reminderElement);
       });
-    });
+    }).catch(error => console.error("Error getting reminders from Firestore:", error));
   }
 
   // Focus Mode
@@ -531,19 +511,22 @@ document.addEventListener('DOMContentLoaded', () => {
       db.collection('users').doc(currentUser.uid).collection('blockedWebsites').add({
         url: website,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      }).then(() => {
+      }).then((docRef) => {
+        console.log("Blocked website saved to Firestore with ID:", docRef.id);
         websiteInput.value = '';
         renderBlockedWebsites();
-      });
+      }).catch(error => console.error("Error saving blocked website to Firestore:", error));
     }
   });
 
   function renderBlockedWebsites() {
     if (!db || !currentUser) return;
     db.collection('users').doc(currentUser.uid).collection('blockedWebsites').orderBy('createdAt', 'desc').get().then((snapshot) => {
+      console.log("Successfully retrieved blocked websites from Firestore.");
       websiteList.innerHTML = '';
       snapshot.forEach(doc => {
         const website = doc.data();
+        console.log("  - Blocked website data:", website);
         const websiteElement = document.createElement('li');
         websiteElement.textContent = website.url;
         
@@ -553,7 +536,10 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteButton.addEventListener('click', () => {
           showConfirm('Are you sure you want to remove this website?', (confirmed) => {
             if (confirmed) {
-              db.collection('users').doc(currentUser.uid).collection('blockedWebsites').doc(doc.id).delete().then(renderBlockedWebsites);
+              db.collection('users').doc(currentUser.uid).collection('blockedWebsites').doc(doc.id).delete().then(() => {
+                console.log("Successfully deleted blocked website from Firestore.");
+                renderBlockedWebsites();
+              }).catch(error => console.error("Error deleting blocked website from Firestore:", error));
             }
           });
         });
@@ -561,12 +547,13 @@ document.addEventListener('DOMContentLoaded', () => {
         websiteElement.appendChild(deleteButton);
         websiteList.appendChild(websiteElement);
       });
-    });
+    }).catch(error => console.error("Error getting blocked websites from Firestore:", error));
   }
 
   startFocusButton.addEventListener('click', () => {
     const duration = parseInt(focusDurationInput.value, 10);
     if (duration > 0) {
+      console.log("Starting focus mode for", duration, "minutes.");
       chrome.storage.local.set({ focusModeDuration: duration });
       chrome.runtime.sendMessage({
         type: 'start-focus-mode',
@@ -576,6 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   stopFocusButton.addEventListener('click', () => {
+    console.log("Stopping focus mode.");
     chrome.runtime.sendMessage({ type: 'stop-focus-mode' });
   });
 
