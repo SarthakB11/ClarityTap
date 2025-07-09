@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function openNoteModal(noteContent, id) {
+  function openNoteModal(noteContent, idOrIndex) {
     const modal = document.getElementById('note-modal');
     const modalNoteContent = document.getElementById('modal-note-content');
     const modalEditorContainer = document.getElementById('modal-editor-container');
@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     editIcon.src = 'images/icons/pencil.svg';
     editIcon.classList.add('note-action');
     editIcon.addEventListener('click', () => {
-      editNoteInModal(id, noteContent);
+      editNoteInModal(idOrIndex, noteContent);
     });
     
     const deleteIcon = document.createElement('img');
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteIcon.addEventListener('click', () => {
       showConfirm('Are you sure you want to delete this note?', (confirmed) => {
         if (confirmed) {
-          deleteNote(id);
+          deleteNote(idOrIndex);
           closeNoteModal();
         }
       });
@@ -207,6 +207,65 @@ document.addEventListener('DOMContentLoaded', () => {
     modalNoteContent.appendChild(actionsContainer);
     modal.style.display = 'flex';
   }
+
+  function editNoteInModal(idOrIndex, noteContent) {
+    const modalNoteContent = document.getElementById('modal-note-content');
+    const modalEditorContainer = document.getElementById('modal-editor-container');
+    const modalSaveButton = document.getElementById('modal-save-button');
+
+    modalNoteContent.style.display = 'none';
+    modalEditorContainer.style.display = 'block';
+
+    if (!modalQuill) {
+      modalQuill = new Quill('#modal-editor', {
+        theme: 'snow',
+        modules: {
+          toolbar: [
+            [{ 'header': [1, 2, false] }],
+            ['bold', 'italic', 'underline'],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }]
+          ]
+        }
+      });
+    }
+    modalQuill.root.innerHTML = noteContent;
+
+    modalSaveButton.onclick = () => {
+      showConfirm('Are you sure you want to save the changes?', (confirmed) => {
+        if (confirmed) {
+          const updatedContent = modalQuill.root.innerHTML;
+          if (currentUser && db) {
+            db.collection('users').doc(currentUser.uid).collection('notes').doc(idOrIndex).update({
+              content: updatedContent
+            }).then(() => {
+              closeNoteModal();
+              renderNotes();
+            });
+          } else {
+            chrome.storage.local.get({notes: []}, (data) => {
+              const notes = data.notes;
+              notes[idOrIndex] = updatedContent;
+              chrome.storage.local.set({notes: notes}, () => {
+                closeNoteModal();
+                renderNotes();
+              });
+            });
+          }
+        }
+      });
+    };
+  }
+
+  function closeNoteModal() {
+    const modal = document.getElementById('note-modal');
+    modal.style.display = 'none';
+  }
+
+  document.getElementById('note-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'note-modal') {
+      closeNoteModal();
+    }
+  });
 
   function editNoteInModal(id, noteContent) {
     const modalNoteContent = document.getElementById('modal-note-content');

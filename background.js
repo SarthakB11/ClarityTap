@@ -171,7 +171,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 });
 
 async function updateBlockingRules() {
-  const { blockedWebsites } = await chrome.storage.sync.get(['blockedWebsites']);
+  const { blockedWebsites } = await chrome.storage.local.get(['blockedWebsites']);
   const { focusModeUntil } = await chrome.storage.local.get(['focusModeUntil']);
 
   const isFocusModeActive = focusModeUntil && focusModeUntil > Date.now();
@@ -182,7 +182,7 @@ async function updateBlockingRules() {
       priority: 1,
       action: { type: 'block' },
       condition: {
-        urlFilter: `*://${blockedWebsites.join('/*, *://')}`,
+        requestDomains: blockedWebsites,
         resourceTypes: ['main_frame']
       }
     }];
