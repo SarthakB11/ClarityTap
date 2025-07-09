@@ -2,7 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const mainContainer = document.getElementById('main-container');
   const loginButton = document.getElementById('login-button');
   const logoutButton = document.getElementById('logout-button');
-  const userName = document.getElementById('user-name');
+  const userProfile = document.getElementById('user-profile');
+  const userIcon = document.getElementById('user-icon');
+  const userTooltip = document.getElementById('user-tooltip');
   const tabs = document.querySelectorAll('.tab-button');
   const contents = document.querySelectorAll('.tab-content');
 
@@ -11,9 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial UI setup
   mainContainer.style.display = 'block';
-  loginButton.style.display = 'block';
-  logoutButton.style.display = 'none';
-  userName.style.display = 'none';
   renderNotes();
   renderTasks();
   renderReminders();
@@ -32,9 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("Updating UI for logged-in user:", user.uid);
     currentUser = user;
     loginButton.style.display = 'none';
-    logoutButton.style.display = 'block';
-    userName.textContent = user.displayName;
-    userName.style.display = 'block';
+    userProfile.style.display = 'flex';
+    userTooltip.textContent = `${user.displayName} (${user.email})`;
     if (!db) {
       db = firebase.firestore();
     }
@@ -49,8 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("Updating UI for guest user.");
     currentUser = null;
     loginButton.style.display = 'block';
-    logoutButton.style.display = 'none';
-    userName.style.display = 'none';
+    userProfile.style.display = 'none';
     db = null;
     // Re-render content from local storage
     renderNotes();
