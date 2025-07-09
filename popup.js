@@ -1,15 +1,23 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const authContainer = document.getElementById('auth-container');
   const mainContainer = document.getElementById('main-container');
   const loginButton = document.getElementById('login-button');
   const logoutButton = document.getElementById('logout-button');
   const userName = document.getElementById('user-name');
-
   const tabs = document.querySelectorAll('.tab-button');
   const contents = document.querySelectorAll('.tab-content');
 
   let db;
   let currentUser = null;
+
+  // Initial UI setup
+  mainContainer.style.display = 'block';
+  loginButton.style.display = 'block';
+  logoutButton.style.display = 'none';
+  userName.style.display = 'none';
+  renderNotes();
+  renderTasks();
+  renderReminders();
+  renderBlockedWebsites();
 
   // Ask the background script for the current user status when the popup opens
   chrome.runtime.sendMessage({ type: 'get-user-status' }, (response) => {
@@ -23,12 +31,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateUIForUser(user) {
     console.log("Updating UI for logged-in user:", user.uid);
     currentUser = user;
-    authContainer.style.display = 'none';
-    mainContainer.style.display = 'block';
+    loginButton.style.display = 'none';
+    logoutButton.style.display = 'block';
     userName.textContent = user.displayName;
+    userName.style.display = 'block';
     if (!db) {
       db = firebase.firestore();
     }
+    // Re-render content from Firestore
     renderNotes();
     renderTasks();
     renderReminders();
@@ -38,9 +48,15 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateUIForGuest() {
     console.log("Updating UI for guest user.");
     currentUser = null;
-    authContainer.style.display = 'block';
-    mainContainer.style.display = 'none';
+    loginButton.style.display = 'block';
+    logoutButton.style.display = 'none';
+    userName.style.display = 'none';
     db = null;
+    // Re-render content from local storage
+    renderNotes();
+    renderTasks();
+    renderReminders();
+    renderBlockedWebsites();
   }
 
   firebase.auth().onAuthStateChanged((user) => {
