@@ -18,6 +18,10 @@ firebase.auth().onAuthStateChanged(firebaseUser => {
     user = null;
     console.log('Auth state changed: User signed out.');
   }
+  
+  // Inform any open popups of the change.
+  chrome.runtime.sendMessage({ type: 'auth-changed', user: user });
+
   // If the resolver is available, it means this is the first time.
   if (authReadyResolver) {
     authReadyResolver();

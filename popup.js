@@ -62,6 +62,19 @@ document.addEventListener('DOMContentLoaded', () => {
   mainContainer.style.display = 'none'; // Hide main content initially
   loadAndApplySettings();
   
+  // Listen for live auth changes from the background script
+  chrome.runtime.onMessage.addListener((request) => {
+    if (request.type === 'auth-changed') {
+      console.log('Auth state change received from background.');
+      if (request.user) {
+        updateUIForUser(request.user);
+      } else {
+        updateUIForGuest();
+      }
+    }
+  });
+
+  // Check the initial auth status when the popup opens
   chrome.runtime.sendMessage({ type: 'check-auth-status' }, (response) => {
     mainContainer.style.display = 'block';
     if (response && response.user) {
