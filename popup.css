@@ -642,6 +642,51 @@ input:checked + .slider:before {
   border-radius: 50%;
 }
 
+#global-search-input {
+  margin-bottom: 15px;
+}
+
+#global-search-results {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.search-result-item {
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: var(--item-bg);
+  color: var(--text-color);
+  font-size: 0.9em;
+  border-left: 3px solid transparent;
+  transition: background 0.3s ease;
+}
+
+.search-result-item:hover {
+  background: var(--item-hover-bg);
+}
+
+.search-result-item .result-type {
+  font-weight: 600;
+  margin-right: 10px;
+  text-transform: uppercase;
+  font-size: 0.8em;
+}
+
+.search-result-item .result-type-note { border-color: #65dfc9; }
+.search-result-item .result-type-task { border-color: #6cdbeb; }
+.search-result-item .result-type-reminder { border-color: #ff6b6b; }
+.search-result-item .result-type-website { border-color: #ffc107; }
+
+.dark-theme .search-result-item .result-type-note { border-color: #00c6ff; }
+.dark-theme .search-result-item .result-type-task { border-color: #0072ff; }
+.dark-theme .search-result-item .result-type-reminder { border-color: #ff8a80; }
+.dark-theme .search-result-item .result-type-website { border-color: #ffca28; }
+
+.search-result-item .result-content {
+  opacity: 0.9;
+}
+
 
 
 
