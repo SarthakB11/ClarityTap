@@ -1,27 +1,11 @@
 importScripts('firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js', 'firebase.js');
 
 let user = null;
-
-// A promise that resolves when the initial auth state is known
+let authReadyResolver;
 const authReady = new Promise(resolve => {
-  const unsubscribe = firebase.auth().onAuthStateChanged(firebaseUser => {
-    if (firebaseUser) {
-      user = {
-        uid: firebaseUser.uid,
-        displayName: firebaseUser.displayName,
-        email: firebaseUser.email,
-      };
-      console.log('Auth state changed: User signed in.', user);
-    } else {
-      user = null;
-      console.log('Auth state changed: User signed out.');
-    }
-    resolve();
-    unsubscribe(); // We only need the very first check on startup
-  });
+  authReadyResolver = resolve;
 });
 
-// Persistent listener to keep 'user' variable updated
 firebase.auth().onAuthStateChanged(firebaseUser => {
   if (firebaseUser) {
     user = {
@@ -29,8 +13,15 @@ firebase.auth().onAuthStateChanged(firebaseUser => {
       displayName: firebaseUser.displayName,
       email: firebaseUser.email,
     };
+    console.log('Auth state changed: User signed in.', user);
   } else {
     user = null;
+    console.log('Auth state changed: User signed out.');
+  }
+  // If the resolver is available, it means this is the first time.
+  if (authReadyResolver) {
+    authReadyResolver();
+    authReadyResolver = null; // Prevent it from being called again
   }
 });
 
@@ -44,6 +35,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   } else if (request.type === 'login') {
     performLogin(sendResponse);
+    return true;
+
+  } else if (request.type === 'logout') {
+    performLogout(sendResponse);
     return true;
   
   } else if (request.type === 'set-reminder') {
@@ -92,6 +87,45 @@ function performLogin(sendResponse) {
         console.error('signInWithCredential failed:', error);
         sendResponse({ success: false, error: error.message });
       });
+  });
+}
+
+function performLogout(sendResponse) {
+  chrome.identity.getAuthToken({ interactive: false }, (token) => {
+    if (token) {
+      // First, revoke the token
+      fetch(`https://accounts.google.com/o/oauth2/revoke?token=${token}`)
+        .then(() => {
+          // Then, remove it from the cache
+          chrome.identity.removeCachedAuthToken({ token }, () => {
+            // Finally, sign out from Firebase
+            firebase.auth().signOut()
+              .then(() => {
+                console.log('User signed out successfully.');
+                sendResponse({ success: true });
+              })
+              .catch(error => {
+                console.error('Firebase sign-out failed:', error);
+                sendResponse({ success: false, error: error.message });
+              });
+          });
+        })
+        .catch(error => {
+          console.error('Token revocation failed:', error);
+          sendResponse({ success: false, error: 'Token revocation failed.' });
+        });
+    } else {
+      // If there's no token, just sign out from Firebase
+      firebase.auth().signOut()
+        .then(() => {
+          console.log('User signed out successfully (no token to revoke).');
+          sendResponse({ success: true });
+        })
+        .catch(error => {
+          console.error('Firebase sign-out failed:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+    }
   });
 }
 

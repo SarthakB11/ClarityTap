@@ -93,15 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Authentication ---
-  firebase.auth().onAuthStateChanged((user) => {
-    // This listener now primarily handles dynamic changes after the initial load
-    if (user) {
-      updateUIForUser(user);
-    } else {
-      updateUIForGuest();
-    }
-  });
-
   loginButton.addEventListener('click', () => {
     console.log("Login button clicked.");
     chrome.runtime.sendMessage({ type: 'login' }, (response) => {
@@ -116,7 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   logoutButton.addEventListener('click', () => {
     console.log("Logout button clicked.");
-    firebase.auth().signOut(); // The onAuthStateChanged listener will handle the UI update
+    chrome.runtime.sendMessage({ type: 'logout' }, (response) => {
+      if (response && response.success) {
+        console.log("Logout successful, updating UI.");
+        updateUIForGuest();
+      } else {
+        console.error("Logout failed.");
+      }
+    });
   });
 
   // --- Tabs ---
