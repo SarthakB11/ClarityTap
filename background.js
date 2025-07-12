@@ -66,8 +66,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.type === 'update-blocking') {
     updateBlockingRules(request.websites);
     return false;
+  
+  } else if (request.type === 'import-data-from-tab') {
+    // This message comes from the dedicated import tab.
+    showConfirmAndImport(request.data);
+    return false;
+
+  } else if (request.type === 'import-data') {
+    handleImportData(request.data, sendResponse);
+    return true; // Indicates async response
   }
 });
+
+function showConfirmAndImport(fileContent) {
+    // This function would ideally show a confirmation to the user.
+    // Since we can't easily show a UI from the background, we'll proceed directly.
+    // For a more advanced implementation, you could open a new tab with a confirmation page.
+    handleImportData(fileContent, (response) => {
+        if (response.success) {
+            console.log("Background import successful.");
+            // Optionally, notify the user of success via a Chrome notification
+            chrome.notifications.create({
+                type: 'basic',
+                title: 'ClarityTap',
+                message: 'Data imported successfully!',
+                priority: 2
+            });
+        } else {
+            console.error("Background import failed:", response.error);
+            chrome.notifications.create({
+                type: 'basic',
+                title: 'ClarityTap Import Failed',
+                message: `Error: ${response.error}`,
+                priority: 2
+            });
+        }
+    });
+}
 
 
 function performLogin(sendResponse) {
@@ -88,6 +123,61 @@ function performLogin(sendResponse) {
         sendResponse({ success: false, error: error.message });
       });
   });
+}
+
+async function handleImportData(data, sendResponse) {
+  try {
+    const importedData = JSON.parse(data);
+    
+    // Clear existing local data
+    await chrome.storage.local.clear();
+    
+    // If user is logged in, clear their Firestore data
+    if (user && user.uid) {
+      const collections = ['notes', 'tasks', 'reminders', 'blockedWebsites'];
+      const db = firebase.firestore();
+      const batch = db.batch();
+      
+      for (const collectionName of collections) {
+        const snapshot = await db.collection('users').doc(user.uid).collection(collectionName).get();
+        snapshot.docs.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+      }
+      await batch.commit();
+      console.log('Firestore data cleared for user:', user.uid);
+    }
+
+    // Save new data
+    if (user && user.uid) {
+      // Save to Firestore
+      const db = firebase.firestore();
+      const batch = db.batch();
+      const collections = ['notes', 'tasks', 'reminders', 'blockedWebsites'];
+      
+      for (const collectionName of collections) {
+        if (importedData[collectionName]) {
+          importedData[collectionName].forEach(item => {
+            const docRef = db.collection('users').doc(user.uid).collection(collectionName).doc();
+            batch.set(docRef, item);
+          });
+        }
+      }
+      await batch.commit();
+      console.log('New data imported to Firestore.');
+
+    } else {
+      // Save to local storage
+      await chrome.storage.local.set(importedData);
+      console.log('New data imported to local storage.');
+    }
+
+    sendResponse({ success: true });
+
+  } catch (error) {
+    console.error('Error during data import:', error);
+    sendResponse({ success: false, error: error.message });
+  }
 }
 
 function performLogout(sendResponse) {

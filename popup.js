@@ -47,6 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsIcon = document.getElementById('settings-icon');
   const settingsModal = document.getElementById('settings-modal');
   const settingsCloseButton = document.getElementById('settings-close-button');
+  const exportDataButton = document.getElementById('export-data-button');
+  const importDataButton = document.getElementById('import-data-button');
 
   let db;
   let currentUser = null;
@@ -108,6 +110,54 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.id === 'settings-modal') {
       settingsModal.style.display = 'none';
     }
+  });
+
+  // --- Data Management ---
+  exportDataButton.addEventListener('click', async () => {
+    let allData = {
+      notes: [],
+      tasks: [],
+      reminders: [],
+      blockedWebsites: []
+    };
+
+    // Get local data first
+    const localData = await new Promise(resolve => chrome.storage.local.get(null, resolve));
+    allData.notes = localData.notes || [];
+    allData.tasks = localData.tasks || [];
+    allData.reminders = localData.reminders || [];
+    allData.blockedWebsites = localData.blockedWebsites || [];
+
+    // If logged in, get Firestore data
+    if (currentUser && db) {
+      const notesSnapshot = await db.collection('users').doc(currentUser.uid).collection('notes').get();
+      allData.notes = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      const tasksSnapshot = await db.collection('users').doc(currentUser.uid).collection('tasks').get();
+      allData.tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      const remindersSnapshot = await db.collection('users').doc(currentUser.uid).collection('reminders').get();
+      allData.reminders = remindersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      const websitesSnapshot = await db.collection('users').doc(currentUser.uid).collection('blockedWebsites').get();
+      allData.blockedWebsites = websitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    const dataStr = JSON.stringify(allData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `clarity-tap-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    console.log("Data exported successfully.");
+  });
+
+    importDataButton.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'import.html' });
+    settingsModal.style.display = 'none';
   });
 
   // --- Authentication ---
