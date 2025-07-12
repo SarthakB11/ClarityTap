@@ -249,11 +249,14 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       priority: 2
     });
 
-    await createOffscreen();
-    chrome.runtime.sendMessage({
-      type: 'play-audio',
-      url: 'audio/alarm.mp3'
-    });
+    const { alarmSound } = await chrome.storage.local.get({ alarmSound: true });
+    if (alarmSound) {
+      await createOffscreen();
+      chrome.runtime.sendMessage({
+        type: 'play-audio',
+        url: 'audio/alarm.mp3'
+      });
+    }
 
     if (reminder.recurrence && reminder.recurrence.type !== 'none') {
       const nextAlarmTime = calculateNextAlarm(reminder);

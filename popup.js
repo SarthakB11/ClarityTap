@@ -49,6 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsCloseButton = document.getElementById('settings-close-button');
   const exportDataButton = document.getElementById('export-data-button');
   const importDataButton = document.getElementById('import-data-button');
+  const themeToggle = document.getElementById('theme-toggle');
+  const alarmSoundToggle = document.getElementById('alarm-sound-toggle');
 
   let db;
   let currentUser = null;
@@ -56,10 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Initial Setup ---
   mainContainer.style.display = 'none'; // Hide main content initially
-  // You could show a loading spinner here
+  loadAndApplySettings();
   
   chrome.runtime.sendMessage({ type: 'check-auth-status' }, (response) => {
-    // Hide loading spinner here
     mainContainer.style.display = 'block';
     if (response && response.user) {
       updateUIForUser(response.user);
@@ -96,6 +97,41 @@ document.addEventListener('DOMContentLoaded', () => {
     renderBlockedWebsites();
     updateFocusTimer();
   }
+
+  // --- Settings ---
+  function loadAndApplySettings() {
+    chrome.storage.local.get(['theme', 'alarmSound'], (settings) => {
+      // Apply theme
+      if (settings.theme === 'dark') {
+        document.body.classList.add('dark-theme');
+        themeToggle.checked = true;
+      } else {
+        document.body.classList.remove('dark-theme');
+        themeToggle.checked = false;
+      }
+
+      // Apply alarm sound setting
+      if (settings.alarmSound === false) {
+        alarmSoundToggle.checked = false;
+      } else {
+        alarmSoundToggle.checked = true;
+      }
+    });
+  }
+
+  themeToggle.addEventListener('change', () => {
+    if (themeToggle.checked) {
+      document.body.classList.add('dark-theme');
+      chrome.storage.local.set({ theme: 'dark' });
+    } else {
+      document.body.classList.remove('dark-theme');
+      chrome.storage.local.set({ theme: 'light' });
+    }
+  });
+
+  alarmSoundToggle.addEventListener('change', () => {
+    chrome.storage.local.set({ alarmSound: alarmSoundToggle.checked });
+  });
 
   // --- Settings Modal ---
   settingsIcon.addEventListener('click', () => {

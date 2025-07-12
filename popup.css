@@ -1,8 +1,50 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
+:root {
+  --background-gradient: linear-gradient(to right top, #d16ba5, #c777b9, #ba83ca, #aa8fd8, #9a9ae1, #8aa7ec, #79b3f4, #69bff8, #52cffe, #41dfff, #46eefa, #5ffbf1);
+  --container-bg: rgba(255, 255, 255, 0.1);
+  --container-border: rgba(255, 255, 255, 0.18);
+  --text-color: #fff;
+  --text-color-light: #f0f0f0;
+  --placeholder-color: rgba(255, 255, 255, 0.7);
+  --input-bg: rgba(255, 255, 255, 0.2);
+  --input-focus-bg: rgba(255, 255, 255, 0.3);
+  --input-border: rgba(255, 255, 255, 0.3);
+  --input-focus-border: rgba(255, 255, 255, 0.5);
+  --item-bg: rgba(255, 255, 255, 0.15);
+  --item-hover-bg: rgba(255, 255, 255, 0.25);
+  --button-gradient: linear-gradient(to right, #65dfc9, #6cdbeb);
+  --delete-hover-color: #ff6b6b;
+  --scrollbar-track-bg: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-bg: rgba(255, 255, 255, 0.3);
+  --scrollbar-thumb-hover-bg: rgba(255, 255, 255, 0.5);
+  --primary-accent: #65dfc9;
+}
+
+body.dark-theme {
+  --background-gradient: linear-gradient(to right top, #1e2a3a, #2a3b4c, #374d5f, #455f72, #547285);
+  --container-bg: rgba(0, 0, 0, 0.2);
+  --container-border: rgba(255, 255, 255, 0.1);
+  --text-color: #e0e0e0;
+  --text-color-light: #f5f5f5;
+  --placeholder-color: rgba(224, 224, 224, 0.6);
+  --input-bg: rgba(0, 0, 0, 0.3);
+  --input-focus-bg: rgba(0, 0, 0, 0.4);
+  --input-border: rgba(255, 255, 255, 0.2);
+  --input-focus-border: rgba(255, 255, 255, 0.4);
+  --item-bg: rgba(0, 0, 0, 0.25);
+  --item-hover-bg: rgba(0, 0, 0, 0.4);
+  --button-gradient: linear-gradient(to right, #00c6ff, #0072ff);
+  --delete-hover-color: #ff8a80;
+  --scrollbar-track-bg: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb-bg: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover-bg: rgba(255, 255, 255, 0.4);
+  --primary-accent: #00c6ff;
+}
+
 body {
   font-family: 'Poppins', sans-serif;
-  background: linear-gradient(to right top, #d16ba5, #c777b9, #ba83ca, #aa8fd8, #9a9ae1, #8aa7ec, #79b3f4, #69bff8, #52cffe, #41dfff, #46eefa, #5ffbf1);
+  background: var(--background-gradient);
   margin: 0;
   padding: 15px;
   width: 380px;
@@ -10,19 +52,21 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  transition: background 0.3s ease;
 }
 
 .container {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--container-bg);
   border-radius: 20px;
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--container-border);
   padding: 30px;
   width: 100%;
   box-sizing: border-box;
   animation: fadeIn 0.5s ease-in-out;
+  transition: background 0.3s ease, border 0.3s ease;
 }
 
 @keyframes fadeIn {
@@ -32,7 +76,7 @@ body {
 
 h1 {
   text-align: center;
-  color: #fff;
+  color: var(--text-color);
   margin-top: 0;
   font-weight: 600;
   text-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -48,7 +92,7 @@ h1 {
 .tab-button {
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--text-color);
   padding: 10px 15px;
   cursor: pointer;
   font-size: 1em;
@@ -65,12 +109,12 @@ h1 {
   transform: translateX(-50%);
   width: 0;
   height: 2px;
-  background: #fff;
+  background: var(--text-color);
   transition: width 0.3s ease;
 }
 
 .tab-button.active, .tab-button:hover {
-  color: #f0f0f0;
+  color: var(--text-color-light);
 }
 
 .tab-button.active::after {
@@ -96,9 +140,9 @@ input, textarea {
   padding: 12px;
   margin-bottom: 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-color);
   box-sizing: border-box;
   font-family: 'Poppins', sans-serif;
   font-weight: 300;
@@ -106,13 +150,13 @@ input, textarea {
 }
 
 input::placeholder, textarea::placeholder {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--placeholder-color);
 }
 
 input:focus, textarea:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: var(--input-focus-bg);
+  border: 1px solid var(--input-focus-border);
 }
 
 textarea {
@@ -126,8 +170,8 @@ button {
   margin-bottom: 10px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(to right, #65dfc9, #6cdbeb);
-  color: #fff;
+  background: var(--button-gradient);
+  color: var(--text-color);
   cursor: pointer;
   font-weight: 600;
   font-size: 1em;
@@ -148,26 +192,26 @@ ul {
 }
 
 li {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--item-bg);
   padding: 12px 15px;
   margin-bottom: 8px;
   border-radius: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #fff;
+  color: var(--text-color);
   text-shadow: 0 1px 2px rgba(0,0,0,0.1);
   transition: background 0.3s ease;
 }
 
 li:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--item-hover-bg);
 }
 
 .delete-button {
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--text-color);
   cursor: pointer;
   font-size: 1.2em;
   padding: 0 5px;
@@ -175,7 +219,7 @@ li:hover {
 }
 
 .delete-button:hover {
-  color: #ff6b6b;
+  color: var(--delete-hover-color);
 }
 
 /* Custom scrollbar for lists */
@@ -184,17 +228,17 @@ ul::-webkit-scrollbar {
 }
 
 ul::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--scrollbar-track-bg);
   border-radius: 10px;
 }
 
 ul::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--scrollbar-thumb-bg);
   border-radius: 10px;
 }
 
 ul::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--scrollbar-thumb-hover-bg);
 }
 #focus-timer {
   display: flex;
@@ -208,23 +252,23 @@ ul::-webkit-scrollbar-thumb:hover {
 }
 
 #timer-text {
-  fill: #fff;
+  fill: var(--text-color);
   font-weight: bold;
 }
 
 .note-container {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--item-bg);
   border-radius: 10px;
   padding: 15px;
   margin-bottom: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--input-border);
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   position: relative;
   transition: background 0.3s ease;
 }
 
 .note-container:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--item-hover-bg);
 }
 
 .note-container .note-actions {
@@ -276,18 +320,18 @@ ul::-webkit-scrollbar-thumb:hover {
 }
 
 .modal-content {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--container-bg);
   padding: 30px;
   border-radius: 20px;
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--container-border);
   width: 90%;
   max-width: 500px;
   position: relative;
 }
 
 #confirm-message {
-  color: #fff;
+  color: var(--text-color);
   text-align: center;
   margin-bottom: 20px;
 }
@@ -298,7 +342,7 @@ ul::-webkit-scrollbar-thumb:hover {
 }
 
 #confirm-yes-button {
-  background: linear-gradient(to right, #65dfc9, #6cdbeb);
+  background: var(--button-gradient);
 }
 
 #confirm-no-button {
@@ -319,13 +363,13 @@ ul::-webkit-scrollbar-thumb:hover {
   cursor: pointer;
   padding: 5px 10px;
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: var(--input-bg);
+  color: var(--text-color);
   transition: background 0.3s ease;
 }
 
 .weekday-selector input:checked + label {
-  background: #65dfc9;
+  background: var(--primary-accent);
 }
 
 #user-profile-container {
@@ -346,7 +390,7 @@ ul::-webkit-scrollbar-thumb:hover {
 }
 
 #user-icon svg {
-  stroke: #fff;
+  stroke: var(--text-color);
 }
 
 .tooltip {
@@ -396,7 +440,7 @@ ul::-webkit-scrollbar-thumb:hover {
 }
 
 .empty-message {
-  color: #fff;
+  color: var(--text-color);
   text-align: center;
   padding: 20px;
   opacity: 0.8;
@@ -404,33 +448,33 @@ ul::-webkit-scrollbar-thumb:hover {
 
 /* Quill Editor Toolbar Styles */
 .ql-toolbar {
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: var(--input-bg) !important;
   border-top-left-radius: 10px !important;
   border-top-right-radius: 10px !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid var(--input-border) !important;
 }
 
 .ql-container {
   border-bottom-left-radius: 10px !important;
   border-bottom-right-radius: 10px !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border: 1px solid var(--input-border) !important;
 }
 
 .ql-editor {
   min-height: 120px;
-  color: #fff;
+  color: var(--text-color);
 }
 
 .ql-toolbar .ql-stroke {
-  stroke: #fff !important;
+  stroke: var(--text-color) !important;
 }
 
 .ql-toolbar .ql-fill {
-  fill: #fff !important;
+  fill: var(--text-color) !important;
 }
 
 .ql-toolbar .ql-picker-label {
-  color: #fff !important;
+  color: var(--text-color) !important;
 }
 
 .ql-toolbar button:hover .ql-stroke,
@@ -438,30 +482,30 @@ ul::-webkit-scrollbar-thumb:hover {
 .ql-toolbar button.ql-active .ql-stroke,
 .ql-toolbar .ql-picker-label:hover .ql-stroke,
 .ql-toolbar .ql-picker-item:hover .ql-stroke {
-  stroke: #65dfc9 !important;
+  stroke: var(--primary-accent) !important;
 }
 
 .ql-toolbar button:hover .ql-fill,
 .ql-toolbar button:focus .ql-fill,
 .ql-toolbar button.ql-active .ql-fill {
-  fill: #65dfc9 !important;
+  fill: var(--primary-accent) !important;
 }
 
 .ql-toolbar button:hover,
 .ql-toolbar button:focus,
 .ql-toolbar button.ql-active {
-  color: #65dfc9 !important;
+  color: var(--primary-accent) !important;
 }
 
 .ql-snow .ql-picker.ql-header .ql-picker-label::before,
 .ql-snow .ql-picker.ql-header .ql-picker-item::before {
-  color: #fff;
+  color: var(--text-color);
 }
 
 .ql-snow .ql-picker.ql-header .ql-picker-label:hover::before,
 .ql-snow .ql-picker.ql-header .ql-picker-item:hover::before,
 .ql-snow .ql-picker.ql-header .ql-picker-item.ql-selected::before {
-  color: #65dfc9 !important;
+  color: var(--primary-accent) !important;
 }
 
 #settings-icon-container {
@@ -475,7 +519,7 @@ ul::-webkit-scrollbar-thumb:hover {
 #settings-icon {
   width: 24px;
   height: 24px;
-  stroke: #fff;
+  stroke: var(--text-color);
   filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
   transition: transform 0.3s ease;
 }
@@ -489,8 +533,8 @@ ul::-webkit-scrollbar-thumb:hover {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  color: #fff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-color);
+  border-bottom: 1px solid var(--input-border);
   padding-bottom: 10px;
 }
 
@@ -502,7 +546,7 @@ ul::-webkit-scrollbar-thumb:hover {
 #settings-close-button {
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--text-color);
   font-size: 2em;
   cursor: pointer;
   padding: 0;
@@ -510,7 +554,7 @@ ul::-webkit-scrollbar-thumb:hover {
   box-shadow: none;
 }
 #settings-close-button:hover {
-  color: #ff6b6b;
+  color: var(--delete-hover-color);
   transform: none;
   box-shadow: none;
 }
@@ -520,7 +564,7 @@ ul::-webkit-scrollbar-thumb:hover {
 }
 
 .settings-section h3 {
-  color: #fff;
+  color: var(--text-color);
   font-weight: 400;
   margin-top: 0;
   margin-bottom: 15px;
@@ -539,7 +583,7 @@ ul::-webkit-scrollbar-thumb:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #fff;
+  color: var(--text-color);
 }
 
 /* Toggle Switch Styles */
@@ -563,7 +607,7 @@ ul::-webkit-scrollbar-thumb:hover {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--input-bg);
   transition: .4s;
 }
 
@@ -579,11 +623,11 @@ ul::-webkit-scrollbar-thumb:hover {
 }
 
 input:checked + .slider {
-  background-color: #65dfc9;
+  background-color: var(--primary-accent);
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px #65dfc9;
+  box-shadow: 0 0 1px var(--primary-accent);
 }
 
 input:checked + .slider:before {
