@@ -1,6 +1,74 @@
 importScripts('firebase-app-compat.js', 'firebase-auth-compat.js', 'firebase-firestore-compat.js', 'firebase.js');
 
 let user = null;
+let authReadyResolver;
+const authReady = new Promise(resolve => {
+  authReadyResolver = resolve;
+});
+
+firebase.auth().onAuthStateChanged(firebaseUser => {
+  if (firebaseUser) {
+    user = {
+      uid: firebaseUser.uid,
+      displayName: firebaseUser.displayName,
+      email: firebaseUser.email,
+    };
+    console.log('Auth state changed: User signed in.', user);
+  } else {
+    user = null;
+    console.log('Auth state changed: User signed out.');
+  }
+  // If the resolver is available, it means this is the first time.
+  if (authReadyResolver) {
+    authReadyResolver();
+    authReadyResolver = null; // Prevent it from being called again
+  }
+});
+
+// Centralized message listener
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.type === 'check-auth-status') {
+    authReady.then(() => {
+      sendResponse({ user });
+    });
+    return true; // Indicates async response
+
+  } else if (request.type === 'login') {
+    performLogin(sendResponse);
+    return true;
+
+  } else if (request.type === 'logout') {
+    performLogout(sendResponse);
+    return true;
+  
+  } else if (request.type === 'set-reminder') {
+    handleSetReminder(request);
+    return false;
+  
+  } else if (request.type === 'delete-reminder') {
+    handleDeleteReminder(request);
+    return false;
+  
+  } else if (request.type === 'start-focus-mode') {
+    const duration = request.duration;
+    const endTime = Date.now() + duration * 60 * 1000;
+    chrome.storage.local.set({ focusModeUntil: endTime }, () => {
+      updateBlockingRules();
+    });
+    return false;
+  
+  } else if (request.type === 'stop-focus-mode') {
+    chrome.storage.local.remove('focusModeUntil', () => {
+      updateBlockingRules();
+    });
+    return false;
+  
+  } else if (request.type === 'update-blocking') {
+    updateBlockingRules(request.websites);
+    return false;
+  }
+});
+
 
 function performLogin(sendResponse) {
   chrome.identity.getAuthToken({ interactive: true }, (token) => {
@@ -22,51 +90,63 @@ function performLogin(sendResponse) {
   });
 }
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'login') {
-    if (user) {
-      console.log('User already logged in');
-      sendResponse({ success: true, user });
-      return true;
-    }
-
-    // First, try to get a token silently. If it exists, it might be stale.
-    chrome.identity.getAuthToken({ interactive: false }, (cachedToken) => {
-      if (!chrome.runtime.lastError && cachedToken) {
-        // If we have a cached token, remove it before the interactive login.
-        chrome.identity.removeCachedAuthToken({ token: cachedToken }, () => {
-          console.log('Cached token removed. Attempting fresh login.');
-          performLogin(sendResponse);
+function performLogout(sendResponse) {
+  chrome.identity.getAuthToken({ interactive: false }, (token) => {
+    if (token) {
+      // First, revoke the token
+      fetch(`https://accounts.google.com/o/oauth2/revoke?token=${token}`)
+        .then(() => {
+          // Then, remove it from the cache
+          chrome.identity.removeCachedAuthToken({ token }, () => {
+            // Finally, sign out from Firebase
+            firebase.auth().signOut()
+              .then(() => {
+                console.log('User signed out successfully.');
+                sendResponse({ success: true });
+              })
+              .catch(error => {
+                console.error('Firebase sign-out failed:', error);
+                sendResponse({ success: false, error: error.message });
+              });
+          });
+        })
+        .catch(error => {
+          console.error('Token revocation failed:', error);
+          sendResponse({ success: false, error: 'Token revocation failed.' });
         });
-      } else {
-        // No cached token, or an error occurred, so just proceed with interactive login.
-        performLogin(sendResponse);
-      }
-    });
-    
-    return true; // Indicates that the response is sent asynchronously
-  } else if (request.type === 'get-user-status') {
-    sendResponse({ user });
-    return;
-  }
-  // Keep other message listeners if they exist and are needed
-});
+    } else {
+      // If there's no token, just sign out from Firebase
+      firebase.auth().signOut()
+        .then(() => {
+          console.log('User signed out successfully (no token to revoke).');
+          sendResponse({ success: true });
+        })
+        .catch(error => {
+          console.error('Firebase sign-out failed:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+    }
+  });
+}
 
-firebase.auth().onAuthStateChanged((firebaseUser) => {
-  if (firebaseUser) {
-    user = {
-      uid: firebaseUser.uid,
-      displayName: firebaseUser.displayName,
-      email: firebaseUser.email,
-    };
-    console.log('User signed in:', user);
-  } else {
-    user = null;
-    console.log('User signed out');
-  }
-});
+// --- Reminders ---
+async function handleSetReminder(request) {
+    const { reminders } = await chrome.storage.sync.get({reminders: []});
+    reminders.push(request.reminder);
+    await chrome.storage.sync.set({ reminders });
+    chrome.alarms.create(request.reminder.text, { when: request.reminder.time });
+}
 
-// ... (rest of your background.js, e.g., alarm listeners)
+async function handleDeleteReminder(request) {
+    const { reminders } = await chrome.storage.sync.get({reminders: []});
+    const reminderToDelete = reminders[request.index];
+    if (reminderToDelete) {
+      chrome.alarms.clear(reminderToDelete.text);
+      const updatedReminders = reminders.filter((_, i) => i !== request.index);
+      await chrome.storage.sync.set({ reminders: updatedReminders });
+    }
+}
+
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   const { reminders } = await chrome.storage.sync.get(['reminders']);
   const reminder = reminders.find(r => r.text === alarm.name);
@@ -90,7 +170,6 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
       if (nextAlarmTime) {
         chrome.alarms.create(reminder.text, { when: nextAlarmTime });
       } else {
-        // If no next alarm, remove it from storage
         const updatedReminders = reminders.filter(r => r.text !== alarm.name);
         await chrome.storage.sync.set({ reminders: updatedReminders });
       }
@@ -101,13 +180,9 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 function calculateNextAlarm(reminder) {
   const now = new Date();
   const endDate = reminder.recurrence.endDate ? new Date(reminder.recurrence.endDate) : null;
-
-  if (endDate && now > endDate) {
-    return null;
-  }
+  if (endDate && now > endDate) return null;
 
   let nextAlarm = new Date(reminder.time);
-
   switch (reminder.recurrence.type) {
     case 'daily':
       nextAlarm.setDate(nextAlarm.getDate() + 1);
@@ -129,11 +204,10 @@ function calculateNextAlarm(reminder) {
     default:
       return null;
   }
-
   return nextAlarm.getTime();
 }
 
-
+// --- Offscreen Audio ---
 async function createOffscreen() {
   if (await chrome.offscreen.hasDocument()) return;
   await chrome.offscreen.createDocument({
@@ -143,46 +217,23 @@ async function createOffscreen() {
   });
 }
 
-chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
-  if (request.type === 'set-reminder') {
-    const { reminders } = await chrome.storage.sync.get({reminders: []});
-    reminders.push(request.reminder);
-    await chrome.storage.sync.set({ reminders });
-    chrome.alarms.create(request.reminder.text, { when: request.reminder.time });
-  } else if (request.type === 'delete-reminder') {
-    const { reminders } = await chrome.storage.sync.get({reminders: []});
-    const reminderToDelete = reminders[request.index];
-    if (reminderToDelete) {
-      chrome.alarms.clear(reminderToDelete.text);
-      const updatedReminders = reminders.filter((_, i) => i !== request.index);
-      await chrome.storage.sync.set({ reminders: updatedReminders });
-    }
-  } else if (request.type === 'start-focus-mode') {
-    const duration = request.duration;
-    const endTime = Date.now() + duration * 60 * 1000;
-    chrome.storage.local.set({ focusModeUntil: endTime }, () => {
-      updateBlockingRules();
-    });
-  } else if (request.type === 'stop-focus-mode') {
-    chrome.storage.local.remove('focusModeUntil', () => {
-      updateBlockingRules();
-    });
-  }
-});
-
-async function updateBlockingRules() {
-  const { blockedWebsites } = await chrome.storage.sync.get(['blockedWebsites']);
+// --- Focus Mode ---
+async function updateBlockingRules(websites) {
   const { focusModeUntil } = await chrome.storage.local.get(['focusModeUntil']);
-
   const isFocusModeActive = focusModeUntil && focusModeUntil > Date.now();
 
-  if (isFocusModeActive && blockedWebsites && blockedWebsites.length > 0) {
+  if (!websites) {
+    const data = await chrome.storage.local.get({ blockedWebsites: [] });
+    websites = data.blockedWebsites.map(site => site.url);
+  }
+
+  if (isFocusModeActive && websites && websites.length > 0) {
     const rules = [{
       id: 1,
       priority: 1,
       action: { type: 'block' },
       condition: {
-        urlFilter: `*://${blockedWebsites.join('/*, *://')}`,
+        requestDomains: websites,
         resourceTypes: ['main_frame']
       }
     }];
@@ -190,10 +241,12 @@ async function updateBlockingRules() {
       removeRuleIds: [1],
       addRules: rules
     });
+    console.log("Blocking rules updated for:", websites);
   } else {
     await chrome.declarativeNetRequest.updateDynamicRules({
       removeRuleIds: [1]
     });
+    console.log("Blocking rules cleared.");
   }
 }
 
@@ -203,7 +256,6 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
   }
 });
 
-// Ensure rules are updated on startup
 chrome.runtime.onStartup.addListener(() => {
   updateBlockingRules();
 });

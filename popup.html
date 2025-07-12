@@ -6,13 +6,16 @@
   <link rel="stylesheet" type="text/css" href="vendor/quill.snow.css">
 </head>
 <body>
-  <div id="auth-container">
-    <button id="login-button">Sign in with Google</button>
-  </div>
-  <div id="main-container" style="display: none;">
-    <div id="user-profile">
-      <p id="user-name"></p>
-      <button id="logout-button">Sign out</button>
+  <div id="main-container">
+    <div id="user-profile-container">
+      <button id="login-button">Sign In</button>
+      <div id="user-profile" style="display: none;">
+        <div id="user-icon" class="tooltip">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span id="user-tooltip" class="tooltiptext"></span>
+        </div>
+        <button id="logout-button">Sign Out</button>
+      </div>
     </div>
     <div class="container">
       <h1>ClarityTap</h1>

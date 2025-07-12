@@ -21,6 +21,12 @@ A lightweight and beautiful Chrome extension for managing your notes, tasks, and
     - Enable "Developer mode" in the top right corner.
     - Click "Load unpacked" and select the `clarity-tap-extension` directory from this repository.
 
+## Tech Stack
+
+- **Frontend:** HTML5, CSS3, JavaScript
+- **Backend:** Firebase (Authentication, Firestore)
+- **Platform:** Chrome Extension API
+
 ## Screenshots
 
 *A showcase of the ClarityTap interface.*
@@ -30,3 +36,7 @@ A lightweight and beautiful Chrome extension for managing your notes, tasks, and
 ## Future Features
 
 We have a lot of exciting features planned! You can check out our project roadmap and contribute by visiting the [Issues](https://github.com/SarthakB11/ClarityTap/issues) page.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
