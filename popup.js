@@ -51,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const importDataButton = document.getElementById('import-data-button');
   const themeToggle = document.getElementById('theme-toggle');
   const alarmSoundToggle = document.getElementById('alarm-sound-toggle');
+  const globalSearchInput = document.getElementById('global-search-input');
+  const globalSearchResults = document.getElementById('global-search-results');
 
   let db;
   let currentUser = null;
@@ -132,6 +134,78 @@ document.addEventListener('DOMContentLoaded', () => {
   alarmSoundToggle.addEventListener('change', () => {
     chrome.storage.local.set({ alarmSound: alarmSoundToggle.checked });
   });
+
+  // --- Global Search ---
+  globalSearchInput.addEventListener('input', handleGlobalSearch);
+
+  async function handleGlobalSearch(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    globalSearchResults.innerHTML = '';
+
+    if (searchTerm.length < 2) {
+      return; // Don't search for less than 2 characters
+    }
+
+    // 1. Fetch all data
+    let allData = { notes: [], tasks: [], reminders: [], blockedWebsites: [] };
+    const localData = await new Promise(resolve => chrome.storage.local.get(['notes', 'tasks', 'reminders', 'blockedWebsites'], resolve));
+    
+    if (currentUser && db) {
+      const notesSnapshot = await db.collection('users').doc(currentUser.uid).collection('notes').get();
+      allData.notes = notesSnapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
+      
+      const tasksSnapshot = await db.collection('users').doc(currentUser.uid).collection('tasks').get();
+      allData.tasks = tasksSnapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
+      
+      const remindersSnapshot = await db.collection('users').doc(currentUser.uid).collection('reminders').get();
+      allData.reminders = remindersSnapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
+
+      const websitesSnapshot = await db.collection('users').doc(currentUser.uid).collection('blockedWebsites').get();
+      allData.blockedWebsites = websitesSnapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
+    } else {
+      allData.notes = localData.notes || [];
+      allData.tasks = localData.tasks || [];
+      allData.reminders = localData.reminders || [];
+      allData.blockedWebsites = localData.blockedWebsites || [];
+    }
+
+    // 2. Filter data
+    const noteResults = allData.notes.filter(n => n.content.toLowerCase().includes(searchTerm));
+    const taskResults = allData.tasks.filter(t => t.text.toLowerCase().includes(searchTerm));
+    const reminderResults = allData.reminders.filter(r => r.text.toLowerCase().includes(searchTerm));
+    const websiteResults = allData.blockedWebsites.filter(w => w.url.toLowerCase().includes(searchTerm));
+
+    // 3. Render results
+    noteResults.forEach(n => renderSearchResult(n.content, 'note'));
+    taskResults.forEach(t => renderSearchResult(t.text, 'task'));
+    reminderResults.forEach(r => renderSearchResult(r.text, 'reminder'));
+    websiteResults.forEach(w => renderSearchResult(w.url, 'website'));
+
+    if (noteResults.length === 0 && taskResults.length === 0 && reminderResults.length === 0 && websiteResults.length === 0) {
+      globalSearchResults.innerHTML = '<p class="empty-message">No results found.</p>';
+    }
+  }
+
+  function renderSearchResult(content, type) {
+    const item = document.createElement('div');
+    item.classList.add('search-result-item', `result-type-${type}`);
+    
+    const typeSpan = document.createElement('span');
+    typeSpan.classList.add('result-type');
+    typeSpan.textContent = type;
+
+    const contentSpan = document.createElement('span');
+    contentSpan.classList.add('result-content');
+    // In a real implementation, you'd want to sanitize this content
+    // if it's from the note's innerHTML. For now, we'll use textContent.
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    contentSpan.textContent = tempDiv.textContent || "";
+
+    item.appendChild(typeSpan);
+    item.appendChild(contentSpan);
+    globalSearchResults.appendChild(item);
+  }
 
   // --- Settings Modal ---
   settingsIcon.addEventListener('click', () => {
