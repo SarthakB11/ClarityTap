@@ -44,6 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const confirmMessage = document.getElementById('confirm-message');
   const confirmYesButton = document.getElementById('confirm-yes-button');
   const confirmNoButton = document.getElementById('confirm-no-button');
+  const settingsIcon = document.getElementById('settings-icon');
+  const settingsModal = document.getElementById('settings-modal');
+  const settingsCloseButton = document.getElementById('settings-close-button');
 
   let db;
   let currentUser = null;
@@ -91,6 +94,21 @@ document.addEventListener('DOMContentLoaded', () => {
     renderBlockedWebsites();
     updateFocusTimer();
   }
+
+  // --- Settings Modal ---
+  settingsIcon.addEventListener('click', () => {
+    settingsModal.style.display = 'flex';
+  });
+
+  settingsCloseButton.addEventListener('click', () => {
+    settingsModal.style.display = 'none';
+  });
+
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target.id === 'settings-modal') {
+      settingsModal.style.display = 'none';
+    }
+  });
 
   // --- Authentication ---
   loginButton.addEventListener('click', () => {
