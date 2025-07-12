@@ -356,19 +356,21 @@ ul::-webkit-scrollbar-thumb:hover {
 
 .tooltip .tooltiptext {
   visibility: hidden;
-  width: 160px;
+  width: 200px; /* Increased width */
   background-color: #555;
   color: #fff;
   text-align: center;
   border-radius: 6px;
-  padding: 5px 0;
+  padding: 8px; /* Increased padding */
   position: absolute;
   z-index: 1;
-  top: 125%; /* Position below the icon */
+  top: 135%; /* Adjusted position */
   left: 50%;
-  margin-left: -80px;
+  margin-left: -100px; /* Centered */
   opacity: 0;
   transition: opacity 0.3s;
+  white-space: normal; /* Allow wrapping */
+  line-height: 1.4; /* Improved line spacing */
 }
 
 .tooltip .tooltiptext::after {
@@ -398,6 +400,68 @@ ul::-webkit-scrollbar-thumb:hover {
   text-align: center;
   padding: 20px;
   opacity: 0.8;
+}
+
+/* Quill Editor Toolbar Styles */
+.ql-toolbar {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-top-left-radius: 10px !important;
+  border-top-right-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.ql-container {
+  border-bottom-left-radius: 10px !important;
+  border-bottom-right-radius: 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.ql-editor {
+  min-height: 120px;
+  color: #fff;
+}
+
+.ql-toolbar .ql-stroke {
+  stroke: #fff !important;
+}
+
+.ql-toolbar .ql-fill {
+  fill: #fff !important;
+}
+
+.ql-toolbar .ql-picker-label {
+  color: #fff !important;
+}
+
+.ql-toolbar button:hover .ql-stroke,
+.ql-toolbar button:focus .ql-stroke,
+.ql-toolbar button.ql-active .ql-stroke,
+.ql-toolbar .ql-picker-label:hover .ql-stroke,
+.ql-toolbar .ql-picker-item:hover .ql-stroke {
+  stroke: #65dfc9 !important;
+}
+
+.ql-toolbar button:hover .ql-fill,
+.ql-toolbar button:focus .ql-fill,
+.ql-toolbar button.ql-active .ql-fill {
+  fill: #65dfc9 !important;
+}
+
+.ql-toolbar button:hover,
+.ql-toolbar button:focus,
+.ql-toolbar button.ql-active {
+  color: #65dfc9 !important;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-label::before,
+.ql-snow .ql-picker.ql-header .ql-picker-item::before {
+  color: #fff;
+}
+
+.ql-snow .ql-picker.ql-header .ql-picker-label:hover::before,
+.ql-snow .ql-picker.ql-header .ql-picker-item:hover::before,
+.ql-snow .ql-picker.ql-header .ql-picker-item.ql-selected::before {
+  color: #65dfc9 !important;
 }
 
 

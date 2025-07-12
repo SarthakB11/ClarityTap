@@ -49,17 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentUser = null;
   let modalQuill;
 
-  // Initial UI setup
-  mainContainer.style.display = 'block';
-  renderNotes();
-  renderTasks();
-  renderReminders();
-  renderBlockedWebsites();
-  updateFocusTimer();
-  setInterval(updateFocusTimer, 1000);
+  // --- Initial Setup ---
+  mainContainer.style.display = 'none'; // Hide main content initially
+  // You could show a loading spinner here
   
-  // Ask the background script for the current user status when the popup opens
-  chrome.runtime.sendMessage({ type: 'get-user-status' }, (response) => {
+  chrome.runtime.sendMessage({ type: 'check-auth-status' }, (response) => {
+    // Hide loading spinner here
+    mainContainer.style.display = 'block';
     if (response && response.user) {
       updateUIForUser(response.user);
     } else {
@@ -76,11 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!db) {
       db = firebase.firestore();
     }
-    // Re-render content from Firestore
-    renderNotes();
-    renderTasks();
-    renderReminders();
-    renderBlockedWebsites();
+    renderAllContent();
   }
 
   function updateUIForGuest() {
@@ -89,19 +81,23 @@ document.addEventListener('DOMContentLoaded', () => {
     loginButton.style.display = 'block';
     userProfile.style.display = 'none';
     db = null;
-    // Re-render content from local storage
+    renderAllContent();
+  }
+  
+  function renderAllContent() {
     renderNotes();
     renderTasks();
     renderReminders();
     renderBlockedWebsites();
+    updateFocusTimer();
   }
 
+  // --- Authentication ---
   firebase.auth().onAuthStateChanged((user) => {
+    // This listener now primarily handles dynamic changes after the initial load
     if (user) {
-      console.log("onAuthStateChanged: User is logged in.", user.uid);
       updateUIForUser(user);
     } else {
-      console.log("onAuthStateChanged: User is logged out.");
       updateUIForGuest();
     }
   });
@@ -120,14 +116,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   logoutButton.addEventListener('click', () => {
     console.log("Logout button clicked.");
-    firebase.auth().signOut().then(() => {
-      console.log("Sign-out successful.");
-      updateUIForGuest();
-    }).catch(error => {
-      console.error("Error signing out:", error);
-    });
+    firebase.auth().signOut(); // The onAuthStateChanged listener will handle the UI update
   });
 
+  // --- Tabs ---
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       tabs.forEach(item => item.classList.remove('active'));
@@ -137,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // --- Quill Editor ---
   const mainQuill = new Quill('#editor', {
     theme: 'snow',
     modules: {
@@ -148,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // --- Modals ---
   function showConfirm(message, callback) {
     confirmMessage.textContent = message;
     customConfirmModal.style.display = 'flex';
@@ -163,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // Notes
+  // --- Notes ---
   saveNoteButton.addEventListener('click', () => {
     showConfirm('Are you sure you want to save this note?', (confirmed) => {
       if (confirmed) {
@@ -394,7 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Tasks
+  // --- Tasks ---
   addTaskButton.addEventListener('click', () => {
     showConfirm('Are you sure you want to add this task?', (confirmed) => {
       if (confirmed) {
@@ -508,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
       taskList.appendChild(taskElement);
   }
 
-  // Reminders
+  // --- Reminders ---
   setReminderButton.addEventListener('click', () => {
     showConfirm('Are you sure you want to set this reminder?', (confirmed) => {
       if (confirmed) {
@@ -633,7 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
       reminderList.appendChild(reminderElement);
   }
 
-  // Focus Mode
+  // --- Focus Mode ---
   addWebsiteButton.addEventListener('click', () => {
     const website = websiteInput.value;
     if (!website.trim()) return;
@@ -674,7 +668,6 @@ document.addEventListener('DOMContentLoaded', () => {
           websites.push(website.url);
           displayBlockedWebsite(website.url, doc.id);
         });
-        // Also update declarativeNetRequest rules
         updateBlockingRules(websites);
       }).catch(error => console.error("Error getting blocked websites from Firestore:", error));
     } else {
@@ -687,7 +680,6 @@ document.addEventListener('DOMContentLoaded', () => {
             data.blockedWebsites.forEach(website => {
                 displayBlockedWebsite(website.url, website.id);
             });
-            // Also update declarativeNetRequest rules
             updateBlockingRules(websites);
         });
     }
@@ -789,4 +781,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const offset = circumference - percent / 100 * circumference;
     timerProgress.style.strokeDashoffset = offset;
   }
+  
+  // Init focus timer update loop
+  setInterval(updateFocusTimer, 1000);
 });
