@@ -592,6 +592,14 @@ ul::-webkit-scrollbar-thumb:hover {
   font-size: 0.9em;
 }
 
+#themes-button {
+  width: auto;
+  padding: 8px 15px;
+  margin-right: 10px;
+  font-size: 0.9em;
+}
+
+
 .setting-item {
   display: flex;
   justify-content: space-between;
@@ -760,6 +768,57 @@ input:checked + .slider:before {
 .flatpickr-time .flatpickr-am-pm {
   color: var(--text-color);
 }
+
+#themes-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.theme-option {
+  padding: 10px 15px;
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.theme-option:hover {
+  background: var(--input-focus-bg);
+}
+
+.theme-option.selected {
+  border-color: var(--primary-accent);
+  background: var(--input-focus-bg);
+}
+
+/* -- Theme: Minimalism -- */
+.minimalism-theme {
+  --background-gradient: linear-gradient(to right top, #e0e0e0, #f5f5f5);
+  --container-bg: rgba(255, 255, 255, 0.8);
+  --text-color: #333;
+  --primary-accent: #4285f4;
+}
+
+/* -- Theme: Coffee -- */
+.coffee-theme {
+  --background-gradient: linear-gradient(to right top, #6f4e37, #a57d65);
+  --container-bg: rgba(255, 255, 255, 0.1);
+  --text-color: #fff;
+  --primary-accent: #ff9800;
+}
+
+/* -- Theme: Garden -- */
+.garden-theme {
+  --background-gradient: linear-gradient(to right top, #4caf50, #8bc34a);
+  --container-bg: rgba(255, 255, 255, 0.2);
+  --text-color: #fff;
+  --primary-accent: #ffeb3b;
+}
+
 
 
 

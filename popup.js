@@ -59,6 +59,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const alarmSoundToggle = document.getElementById('alarm-sound-toggle');
   const globalSearchInput = document.getElementById('global-search-input');
   const globalSearchResults = document.getElementById('global-search-results');
+  const themesButton = document.getElementById('themes-button');
+  const themesContainer = document.getElementById('themes-container');
+  const themeOptions = document.querySelectorAll('.theme-option');
 
   let db;
   let currentUser = null;
@@ -123,12 +126,21 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadAndApplySettings() {
     chrome.storage.local.get(['theme', 'alarmSound'], (settings) => {
       // Apply theme
-      if (settings.theme === 'dark') {
-        document.body.classList.add('dark-theme');
-        themeToggle.checked = true;
-      } else {
-        document.body.classList.remove('dark-theme');
-        themeToggle.checked = false;
+      if (settings.theme) {
+        document.body.className = '';
+        document.body.classList.add(`${settings.theme}-theme`);
+        
+        themeOptions.forEach(option => {
+          if (option.dataset.theme === settings.theme) {
+            option.classList.add('selected');
+          }
+        });
+
+        if (settings.theme === 'dark') {
+          themeToggle.checked = true;
+        } else {
+          themeToggle.checked = false;
+        }
       }
 
       // Apply alarm sound setting
@@ -142,16 +154,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   themeToggle.addEventListener('change', () => {
     if (themeToggle.checked) {
-      document.body.classList.add('dark-theme');
+      document.body.className = 'dark-theme';
       chrome.storage.local.set({ theme: 'dark' });
     } else {
-      document.body.classList.remove('dark-theme');
+      document.body.className = '';
       chrome.storage.local.set({ theme: 'light' });
     }
   });
 
   alarmSoundToggle.addEventListener('change', () => {
     chrome.storage.local.set({ alarmSound: alarmSoundToggle.checked });
+  });
+
+  themesButton.addEventListener('click', () => {
+    themesContainer.style.display = themesContainer.style.display === 'none' ? 'flex' : 'none';
+  });
+
+  themeOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      const selectedTheme = option.dataset.theme;
+      document.body.className = ''; // Clear existing theme classes
+      document.body.classList.add(`${selectedTheme}-theme`);
+      chrome.storage.local.set({ theme: selectedTheme });
+
+      // Update the selected visual state
+      themeOptions.forEach(opt => opt.classList.remove('selected'));
+      option.classList.add('selected');
+    });
   });
 
   // --- Global Search ---
