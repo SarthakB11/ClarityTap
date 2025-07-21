@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
+  flatpickr("#reminder-time", {
+    enableTime: true,
+    dateFormat: "Y-m-d H:i",
+    theme: "dark"
+  });
+
   // Core UI elements
   const mainContainer = document.getElementById('main-container');
   const loginButton = document.getElementById('login-button');
