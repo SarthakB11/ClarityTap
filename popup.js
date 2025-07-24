@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', () => {
   flatpickr("#reminder-time", {
     enableTime: true,
     dateFormat: "Y-m-d H:i",
-    theme: "dark"
   });
 
   // Core UI elements
@@ -126,21 +125,23 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadAndApplySettings() {
     chrome.storage.local.get(['theme', 'alarmSound'], (settings) => {
       // Apply theme
-      if (settings.theme) {
-        document.body.className = '';
-        document.body.classList.add(`${settings.theme}-theme`);
-        
-        themeOptions.forEach(option => {
-          if (option.dataset.theme === settings.theme) {
-            option.classList.add('selected');
-          }
-        });
+      let currentTheme = settings.theme || 'default';
+      if (currentTheme === 'light') currentTheme = 'default';
 
-        if (settings.theme === 'dark') {
-          themeToggle.checked = true;
-        } else {
-          themeToggle.checked = false;
+      document.body.className = '';
+      document.body.classList.add(`${currentTheme}-theme`);
+      
+      themeOptions.forEach(option => {
+        option.classList.remove('selected');
+        if (option.dataset.theme === currentTheme) {
+          option.classList.add('selected');
         }
+      });
+
+      if (currentTheme === 'dark') {
+        themeToggle.checked = true;
+      } else {
+        themeToggle.checked = false;
       }
 
       // Apply alarm sound setting
@@ -153,13 +154,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   themeToggle.addEventListener('change', () => {
-    if (themeToggle.checked) {
-      document.body.className = 'dark-theme';
-      chrome.storage.local.set({ theme: 'dark' });
-    } else {
-      document.body.className = '';
-      chrome.storage.local.set({ theme: 'light' });
-    }
+    const theme = themeToggle.checked ? 'dark' : 'default';
+    document.body.className = `${theme}-theme`;
+    chrome.storage.local.set({ theme: theme });
+    
+    themeOptions.forEach(opt => opt.classList.remove('selected'));
+    document.querySelector(`.theme-option[data-theme="${theme}"]`).classList.add('selected');
   });
 
   alarmSoundToggle.addEventListener('change', () => {
@@ -180,6 +180,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update the selected visual state
       themeOptions.forEach(opt => opt.classList.remove('selected'));
       option.classList.add('selected');
+
+      // Sync dark mode toggle
+      themeToggle.checked = (selectedTheme === 'dark');
     });
   });
 
