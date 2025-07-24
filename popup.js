@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
+  flatpickr("#reminder-time", {
+    enableTime: true,
+    dateFormat: "Y-m-d H:i",
+  });
+
   // Core UI elements
   const mainContainer = document.getElementById('main-container');
   const loginButton = document.getElementById('login-button');
@@ -53,6 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const alarmSoundToggle = document.getElementById('alarm-sound-toggle');
   const globalSearchInput = document.getElementById('global-search-input');
   const globalSearchResults = document.getElementById('global-search-results');
+  const themesButton = document.getElementById('themes-button');
+  const themesContainer = document.getElementById('themes-container');
+  const themeOptions = document.querySelectorAll('.theme-option');
 
   let db;
   let currentUser = null;
@@ -117,11 +125,22 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadAndApplySettings() {
     chrome.storage.local.get(['theme', 'alarmSound'], (settings) => {
       // Apply theme
-      if (settings.theme === 'dark') {
-        document.body.classList.add('dark-theme');
+      let currentTheme = settings.theme || 'default';
+      if (currentTheme === 'light') currentTheme = 'default';
+
+      document.body.className = '';
+      document.body.classList.add(`${currentTheme}-theme`);
+      
+      themeOptions.forEach(option => {
+        option.classList.remove('selected');
+        if (option.dataset.theme === currentTheme) {
+          option.classList.add('selected');
+        }
+      });
+
+      if (currentTheme === 'dark') {
         themeToggle.checked = true;
       } else {
-        document.body.classList.remove('dark-theme');
         themeToggle.checked = false;
       }
 
@@ -135,17 +154,36 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   themeToggle.addEventListener('change', () => {
-    if (themeToggle.checked) {
-      document.body.classList.add('dark-theme');
-      chrome.storage.local.set({ theme: 'dark' });
-    } else {
-      document.body.classList.remove('dark-theme');
-      chrome.storage.local.set({ theme: 'light' });
-    }
+    const theme = themeToggle.checked ? 'dark' : 'default';
+    document.body.className = `${theme}-theme`;
+    chrome.storage.local.set({ theme: theme });
+    
+    themeOptions.forEach(opt => opt.classList.remove('selected'));
+    document.querySelector(`.theme-option[data-theme="${theme}"]`).classList.add('selected');
   });
 
   alarmSoundToggle.addEventListener('change', () => {
     chrome.storage.local.set({ alarmSound: alarmSoundToggle.checked });
+  });
+
+  themesButton.addEventListener('click', () => {
+    themesContainer.style.display = themesContainer.style.display === 'none' ? 'flex' : 'none';
+  });
+
+  themeOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      const selectedTheme = option.dataset.theme;
+      document.body.className = ''; // Clear existing theme classes
+      document.body.classList.add(`${selectedTheme}-theme`);
+      chrome.storage.local.set({ theme: selectedTheme });
+
+      // Update the selected visual state
+      themeOptions.forEach(opt => opt.classList.remove('selected'));
+      option.classList.add('selected');
+
+      // Sync dark mode toggle
+      themeToggle.checked = (selectedTheme === 'dark');
+    });
   });
 
   // --- Global Search ---

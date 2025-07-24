@@ -4,25 +4,28 @@
   <title>ClarityTap</title>
   <link rel="stylesheet" type="text/css" href="popup.css">
   <link rel="stylesheet" type="text/css" href="vendor/quill.snow.css">
+  <link rel="stylesheet" type="text/css" href="vendor/flatpickr.min.css">
 </head>
 <body>
   <div id="main-container">
-    <div id="settings-icon-container" class="tooltip">
-      <img src="images/icons/settings.svg" id="settings-icon" alt="Settings">
-      <span class="tooltiptext">Settings</span>
-    </div>
-    <div id="user-profile-container">
-      <button id="login-button">Sign In</button>
-      <div id="user-profile" style="display: none;">
-        <div id="user-icon" class="tooltip">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-          <span id="user-tooltip" class="tooltiptext"></span>
-        </div>
-        <button id="logout-button">Sign Out</button>
-      </div>
-    </div>
     <div class="container">
-      <h1>ClarityTap</h1>
+      <div class="header">
+        <div id="settings-icon-container" class="tooltip">
+          <img src="images/icons/settings.svg" id="settings-icon" alt="Settings">
+          <span class="tooltiptext">Settings</span>
+        </div>
+        <h1>ClarityTap</h1>
+        <div id="user-profile-container">
+          <button id="login-button">Sign In</button>
+          <div id="user-profile" style="display: none;">
+            <div id="user-icon" class="tooltip">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span id="user-tooltip" class="tooltiptext"></span>
+            </div>
+            <button id="logout-button">Sign Out</button>
+          </div>
+        </div>
+      </div>
       <div class="tabs">
         <button class="tab-button active" data-tab="notes">Notes</button>
         <button class="tab-button" data-tab="tasks">Tasks</button>
@@ -41,7 +44,7 @@
       </div>
       <div id="reminders" class="tab-content">
         <input type="text" id="reminder-input" placeholder="Reminder title...">
-        <input type="datetime-local" id="reminder-time">
+        <input type="text" id="reminder-time" placeholder="Select Date and Time">
         <select id="recurrence-unit">
           <option value="none">Does not repeat</option>
           <option value="daily">Daily</option>
@@ -127,6 +130,24 @@
       </div>
       <div class="settings-section">
         <h3>Theme</h3>
+        <button id="themes-button">Select Theme</button>
+        <div id="themes-container" style="display: none;">
+            <div class="theme-option" data-theme="default">
+                <label>Default</label>
+            </div>
+            <div class="theme-option" data-theme="minimalism">
+                <label>Minimalism</label>
+            </div>
+            <div class="theme-option" data-theme="coffee">
+                <label>Coffee</label>
+            </div>
+            <div class="theme-option" data-theme="garden">
+                <label>Garden</label>
+            </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>Themes</h3>
         <div class="setting-item">
           <label for="theme-toggle">Dark Mode</label>
           <label class="switch">
@@ -148,6 +169,7 @@
     </div>
   </div>
   <script src="vendor/quill.js"></script>
+  <script src="vendor/flatpickr.min.js"></script>
   <script src="firebase-app-compat.js"></script>
   <script src="firebase-auth-compat.js"></script>
   <script src="firebase-firestore-compat.js"></script>
