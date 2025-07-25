@@ -243,22 +243,29 @@ li:hover {
   color: var(--delete-hover-color);
 }
 
+
+#notes-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 5px; /* To avoid content touching scrollbar */
+}
+
 /* Custom scrollbar for lists */
-ul::-webkit-scrollbar {
+ul::-webkit-scrollbar, #notes-list::-webkit-scrollbar {
   width: 8px;
 }
 
-ul::-webkit-scrollbar-track {
+ul::-webkit-scrollbar-track, #notes-list::-webkit-scrollbar-track {
   background: var(--scrollbar-track-bg);
   border-radius: 10px;
 }
 
-ul::-webkit-scrollbar-thumb {
+ul::-webkit-scrollbar-thumb, #notes-list::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb-bg);
   border-radius: 10px;
 }
 
-ul::-webkit-scrollbar-thumb:hover {
+ul::-webkit-scrollbar-thumb:hover, #notes-list::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover-bg);
 }
 #focus-timer {
@@ -321,6 +328,32 @@ ul::-webkit-scrollbar-thumb:hover {
 
 .note-action:hover {
   filter: brightness(1);
+}
+
+.task-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--text-color);
+  border-radius: 5px;
+  cursor: pointer;
+  position: relative;
+  margin-right: 10px;
+}
+
+.task-checkbox .check {
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.2s ease-in-out;
+  font-size: 20px;
+  color: green;
+  position: absolute;
+  top: -3px;
+  left: 2px;
+}
+
+.task-checkbox.completed .check {
+  opacity: 1;
+  transform: scale(1);
 }
 
 #completed-tasks-container {

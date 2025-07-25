@@ -693,30 +693,44 @@ document.addEventListener('DOMContentLoaded', () => {
       taskContainer.classList.add('note-container');
 
       const taskElement = document.createElement('li');
-      taskElement.textContent = text;
-      taskElement.style.textDecoration = completed ? 'line-through' : 'none';
       
-      const completeButton = document.createElement('input');
-      completeButton.type = 'checkbox';
-      completeButton.checked = completed;
-      completeButton.addEventListener('change', () => {
-        if (currentUser && db) {
-            db.collection('users').doc(currentUser.uid).collection('tasks').doc(id).update({
-                completed: completeButton.checked
-            }).then(() => {
-                console.log("Successfully updated task in Firestore.");
-                renderTasks();
-            }).catch(error => console.error("Error updating task in Firestore:", error));
-        } else {
-            chrome.storage.local.get({ tasks: [] }, (data) => {
-                const tasks = data.tasks.map(t => t.id === id ? { ...t, completed: completeButton.checked } : t);
-                chrome.storage.local.set({ tasks: tasks }, () => {
-                    console.log("Task updated in local storage.");
-                    renderTasks();
-                });
-            });
-        }
+      const checkbox = document.createElement('div');
+      checkbox.classList.add('task-checkbox');
+      if (completed) {
+        checkbox.classList.add('completed');
+      }
+
+      const check = document.createElement('div');
+      check.classList.add('check');
+      check.innerHTML = '&#x2713;';
+      checkbox.appendChild(check);
+      
+      checkbox.addEventListener('click', () => {
+        checkbox.classList.toggle('completed');
+        
+        setTimeout(() => {
+          if (currentUser && db) {
+              db.collection('users').doc(currentUser.uid).collection('tasks').doc(id).update({
+                  completed: !completed
+              }).then(() => {
+                  console.log("Successfully updated task in Firestore.");
+                  renderTasks();
+              }).catch(error => console.error("Error updating task in Firestore:", error));
+          } else {
+              chrome.storage.local.get({ tasks: [] }, (data) => {
+                  const tasks = data.tasks.map(t => t.id === id ? { ...t, completed: !completed } : t);
+                  chrome.storage.local.set({ tasks: tasks }, () => {
+                      console.log("Task updated in local storage.");
+                      renderTasks();
+                  });
+              });
+          }
+        }, 500);
       });
+
+      const taskText = document.createElement('span');
+      taskText.textContent = text;
+      taskText.style.textDecoration = completed ? 'line-through' : 'none';
 
       const actionsContainer = document.createElement('div');
       actionsContainer.classList.add('note-actions');
@@ -734,7 +748,8 @@ document.addEventListener('DOMContentLoaded', () => {
       actionsContainer.appendChild(editIcon);
       actionsContainer.appendChild(deleteIcon);
 
-      taskElement.prepend(completeButton);
+      taskElement.appendChild(checkbox);
+      taskElement.appendChild(taskText);
       taskContainer.appendChild(taskElement);
       taskContainer.appendChild(actionsContainer);
       listElement.appendChild(taskContainer);
