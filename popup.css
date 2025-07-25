@@ -251,21 +251,22 @@ li:hover {
 }
 
 /* Custom scrollbar for lists */
-ul::-webkit-scrollbar, #notes-list::-webkit-scrollbar {
+ul::-webkit-scrollbar, #notes-list::-webkit-scrollbar, .settings-content::-webkit-scrollbar, body::-webkit-scrollbar {
   width: 8px;
 }
 
-ul::-webkit-scrollbar-track, #notes-list::-webkit-scrollbar-track {
+ul::-webkit-scrollbar-track, #notes-list::-webkit-scrollbar-track, .settings-content::-webkit-scrollbar-track, body::-webkit-scrollbar-track {
   background: var(--scrollbar-track-bg);
   border-radius: 10px;
 }
 
-ul::-webkit-scrollbar-thumb, #notes-list::-webkit-scrollbar-thumb {
+ul::-webkit-scrollbar-thumb, #notes-list::-webkit-scrollbar-thumb, .settings-content::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb-bg);
   border-radius: 10px;
+  transition: background 0.3s ease;
 }
 
-ul::-webkit-scrollbar-thumb:hover, #notes-list::-webkit-scrollbar-thumb:hover {
+ul::-webkit-scrollbar-thumb:hover, #notes-list::-webkit-scrollbar-thumb:hover, .settings-content::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover-bg);
 }
 #focus-timer {
