@@ -600,12 +600,26 @@ ul::-webkit-scrollbar-thumb:hover, #notes-list::-webkit-scrollbar-thumb:hover {
   padding-bottom: 10px;
 }
 
-.modal-header h2 {
-  margin: 0;
-  font-weight: 400;
+.settings-modal-content {
+  display: flex;
+  flex-direction: column;
+  height: 90%;
+}
+
+.modal-header {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.settings-content {
+  overflow-y: auto;
+  flex-grow: 1;
 }
 
 #settings-close-button {
+  position: absolute;
+  top: 15px;
+  right: 20px;
   background: transparent;
   border: none;
   color: var(--text-color);
